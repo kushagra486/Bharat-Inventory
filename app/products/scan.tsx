@@ -1,15 +1,17 @@
-import { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
+import { useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
 import { CameraView, useCameraPermissions, BarcodeScanningResult } from 'expo-camera';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, RADIUS, FONT_SIZES } from '@/constants';
 import { getProducts } from '@/lib/db';
+import { lookupBarcode, guessLocalCategory } from '@/lib/barcodeLookup';
 
 export default function ScanScreen() {
   const [permission, requestPermission] = useCameraPermissions();
   const [scanned, setScanned] = useState(false);
+  const [looking, setLooking] = useState(false);
   const [torch, setTorch] = useState(false);
 
   if (!permission) return <View style={styles.container} />;
@@ -32,26 +34,54 @@ export default function ScanScreen() {
     );
   }
 
-  async function handleBarcodeScanned({ type, data }: BarcodeScanningResult) {
+  async function handleBarcodeScanned({ data }: BarcodeScanningResult) {
     if (scanned) return;
     setScanned(true);
 
-    // Check if product with this barcode exists
-    const products = await getProducts({ barcode: data });
-
-    if (products.length > 0) {
+    // 1. Check if WE already have this product saved.
+    const existing = await getProducts({ barcode: data });
+    if (existing.length > 0) {
       Alert.alert(
-        '✅ Product Found',
-        `Found: ${products[0].name}`,
+        '✅ Already In Your Inventory',
+        `Found: ${existing[0].name}`,
         [
-          { text: 'View Product', onPress: () => router.replace(`/products/${products[0].id}`) },
+          { text: 'View Product', onPress: () => router.replace(`/products/${existing[0].id}`) },
+          { text: 'Scan Again', onPress: () => setScanned(false) },
+        ]
+      );
+      return;
+    }
+
+    // 2. Not in our DB yet — try Open Food Facts (free, no key, no limit) to auto-fill.
+    setLooking(true);
+    const info = await lookupBarcode(data);
+    setLooking(false);
+
+    if (info.found) {
+      Alert.alert(
+        '📦 Product Found Online',
+        `${info.name ?? 'Unknown name'}${info.brand ? ` — ${info.brand}` : ''}\n\nWe'll pre-fill what we found. You'll just need to add the expiry date.`,
+        [
+          {
+            text: 'Use This',
+            onPress: () => router.replace({
+              pathname: '/products/add',
+              params: {
+                barcode: data,
+                prefillName: info.name ?? '',
+                prefillBrand: info.brand ?? '',
+                prefillCategory: guessLocalCategory(info.categoryGuess),
+                prefillImage: info.imageUrl ?? '',
+              },
+            }),
+          },
           { text: 'Scan Again', onPress: () => setScanned(false) },
         ]
       );
     } else {
       Alert.alert(
         'Barcode Scanned',
-        `Barcode: ${data}\n\nNo product found. Add a new product with this barcode?`,
+        `Barcode: ${data}\n\nNo product found online. Add it manually with this barcode pre-filled?`,
         [
           { text: 'Add Product', onPress: () => router.replace({ pathname: '/products/add', params: { barcode: data } }) },
           { text: 'Scan Again', onPress: () => setScanned(false) },
@@ -73,9 +103,7 @@ export default function ScanScreen() {
         }}
       />
 
-      {/* Overlay */}
       <View style={styles.overlay}>
-        {/* Top bar */}
         <SafeAreaView style={styles.topBar}>
           <TouchableOpacity style={styles.circleBtn} onPress={() => router.back()}>
             <Ionicons name="close" size={24} color="#fff" />
@@ -86,7 +114,6 @@ export default function ScanScreen() {
           </TouchableOpacity>
         </SafeAreaView>
 
-        {/* Scanner frame */}
         <View style={styles.frameArea}>
           <View style={styles.frame}>
             <View style={[styles.corner, styles.cornerTL]} />
@@ -96,11 +123,11 @@ export default function ScanScreen() {
             {!scanned && <View style={styles.scanLine} />}
           </View>
           <Text style={styles.scanHint}>
-            {scanned ? 'Processing...' : 'Point camera at barcode or QR code'}
+            {looking ? 'Looking up product...' : scanned ? 'Processing...' : 'Point camera at barcode or QR code'}
           </Text>
+          {looking && <ActivityIndicator color={COLORS.accentCyan} style={{ marginTop: SPACING.md }} />}
         </View>
 
-        {/* Bottom bar */}
         <View style={styles.bottomBar}>
           <TouchableOpacity
             style={styles.manualBtn}
