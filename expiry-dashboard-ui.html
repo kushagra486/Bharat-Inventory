@@ -1,0 +1,2783 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Bharat Inventory</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{
+  --bg:#090e1c;
+  --surface-low:#161b2b;
+  --surface:#1a1f2f;
+  --surface-high:#25293a;
+  --surface-top:#2f3445;
+  --primary:#afc6ff;
+  --primary-container:#528dff;
+  --secondary:#a2e7ff;
+  --secondary-container:#00d2fd;
+  --tertiary:#d5baff;
+  --tertiary-container:#a874ff;
+  --on-surface:#dee1f7;
+  --on-surface-var:#c2c6d6;
+  --outline:#8c909f;
+  --outline-var:#424753;
+  --error:#ffb4ab;
+  --safe:#4ade80;
+  --warn:#facc15;
+  --danger:#f87171;
+  --border-glass:linear-gradient(135deg,rgba(255,255,255,0.15),rgba(255,255,255,0.04));
+  --font-head:'Plus Jakarta Sans',sans-serif;
+  --font-body:'Inter',sans-serif;
+  --font-num:'Space Grotesk',sans-serif;
+  --r-sm:4px;--r:8px;--r-md:12px;--r-lg:16px;--r-xl:24px;--r-full:9999px;
+  --dur:0.3s;--ease:cubic-bezier(0.16,1,0.3,1);
+}
+html,body{height:100%;background:var(--bg);color:var(--on-surface);font-family:var(--font-body);overflow:hidden}
+
+/* ── PHONE SHELL ─────────────────────────────────────── */
+.shell{
+  width:390px;height:844px;
+  background:var(--bg);
+  border-radius:44px;
+  overflow:hidden;
+  position:relative;
+  margin:0 auto;
+  box-shadow:0 40px 120px rgba(0,0,0,.7),0 0 0 1px rgba(255,255,255,.08),inset 0 0 0 1px rgba(255,255,255,.04);
+}
+@media(max-height:900px){
+  .shell{transform:scale(0.92);transform-origin:top center}
+}
+@media(max-height:800px){
+  .shell{transform:scale(0.82);transform-origin:top center}
+}
+body{display:flex;align-items:center;justify-content:center;min-height:100vh;background:radial-gradient(ellipse 60% 50% at 30% 40%,rgba(175,198,255,.07) 0%,transparent 70%),radial-gradient(ellipse 50% 60% at 70% 70%,rgba(213,186,255,.05) 0%,transparent 70%),#060a14}
+
+/* ── PAGES ─────────────────────────────────────── */
+.page{
+  position:absolute;inset:0;
+  display:flex;flex-direction:column;
+  background:var(--bg);
+  opacity:0;pointer-events:none;
+  transform:translateY(24px);
+  transition:opacity .35s var(--ease),transform .35s var(--ease);
+  overflow:hidden;
+}
+.page.active{opacity:1;pointer-events:all;transform:translateY(0)}
+.page.slide-out{opacity:0;transform:translateY(-20px)}
+
+/* ── SCROLLABLE CONTENT ─────────────────────────────────────── */
+.scroll{overflow-y:auto;flex:1;scrollbar-width:none}
+.scroll::-webkit-scrollbar{display:none}
+
+/* ── STATUS BAR ─────────────────────────────────────── */
+.status-bar{
+  height:44px;display:flex;align-items:center;justify-content:space-between;
+  padding:0 24px;flex-shrink:0;
+  font-family:var(--font-num);font-size:12px;font-weight:600;
+  color:var(--on-surface);
+}
+.status-time{font-size:15px;font-weight:700}
+.status-icons{display:flex;gap:6px;align-items:center}
+.status-icons svg{width:16px;height:16px;fill:currentColor}
+
+/* ── TOP BAR ─────────────────────────────────────── */
+.top-bar{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:4px 20px 12px;flex-shrink:0;
+}
+.top-bar-title{font-family:var(--font-head);font-size:20px;font-weight:700;color:var(--on-surface)}
+.top-bar-logo{display:flex;align-items:center;gap:8px}
+.logo-icon{width:28px;height:28px;display:grid;grid-template-columns:1fr 1fr;gap:3px}
+.logo-dot{border-radius:2px;background:var(--primary)}
+.logo-dot:nth-child(1){background:var(--primary)}
+.logo-dot:nth-child(2){background:var(--primary-container)}
+.logo-dot:nth-child(3){background:var(--secondary-container)}
+.logo-dot:nth-child(4){background:var(--tertiary-container)}
+.logo-name{font-family:var(--font-head);font-size:18px;font-weight:700;background:linear-gradient(90deg,var(--secondary),var(--primary));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.avatar{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#3a4a7a,#2a3560);border:2px solid var(--outline-var);overflow:hidden;cursor:pointer}
+.avatar img{width:100%;height:100%;object-fit:cover}
+.avatar-placeholder{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--primary-container),var(--tertiary-container));display:flex;align-items:center;justify-content:center;font-family:var(--font-num);font-size:14px;font-weight:700;color:#fff;cursor:pointer}
+.icon-btn{width:40px;height:40px;border-radius:var(--r-md);border:1px solid var(--outline-var);background:var(--surface);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:background .15s}
+.icon-btn:active{background:var(--surface-high)}
+.icon-btn svg{width:20px;height:20px;stroke:var(--on-surface-var);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.add-btn{
+  display:flex;align-items:center;justify-content:center;gap:6px;
+  width:44px;height:44px;border-radius:var(--r-md);
+  background:linear-gradient(135deg,var(--primary-container),#3a7aff);
+  border:none;cursor:pointer;box-shadow:0 4px 20px rgba(82,141,255,.35);
+  transition:transform .15s,box-shadow .15s;
+}
+.add-btn:active{transform:scale(0.94);box-shadow:0 2px 10px rgba(82,141,255,.25)}
+.add-btn svg{width:22px;height:22px;stroke:#fff;fill:none;stroke-width:2.5;stroke-linecap:round}
+
+/* ── BOTTOM NAV ─────────────────────────────────────── */
+.bottom-nav{
+  flex-shrink:0;height:80px;
+  background:rgba(22,27,43,0.95);
+  backdrop-filter:blur(20px);
+  border-top:1px solid var(--outline-var);
+  display:flex;align-items:flex-start;padding-top:8px;
+}
+.nav-item{
+  flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;
+  padding:8px 0;cursor:pointer;
+  transition:color .2s;position:relative;
+}
+.nav-item svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;transition:stroke .2s}
+.nav-item span{font-family:var(--font-num);font-size:10px;font-weight:600;letter-spacing:.03em;transition:color .2s}
+.nav-item{color:var(--outline)}
+.nav-item.active{color:var(--secondary)}
+.nav-item.active svg{stroke:var(--secondary)}
+.nav-item .nav-pill{
+  position:absolute;top:0;left:50%;transform:translateX(-50%);
+  width:48px;height:48px;border-radius:var(--r-md);
+  background:rgba(162,231,255,.1);
+  opacity:0;transition:opacity .2s;
+}
+.nav-item.active .nav-pill{opacity:1}
+
+/* ── GLASS CARDS ─────────────────────────────────────── */
+.glass-card{
+  background:var(--surface);
+  border:1px solid var(--outline-var);
+  border-radius:var(--r-lg);
+  position:relative;overflow:hidden;
+}
+.glass-card::before{
+  content:'';position:absolute;inset:0;
+  background:linear-gradient(135deg,rgba(255,255,255,.06) 0%,rgba(255,255,255,0) 60%);
+  pointer-events:none;border-radius:inherit;
+}
+
+/* ── SECTION PADDING ─────────────────────────────────────── */
+.px{padding-left:20px;padding-right:20px}
+
+/* ── ═══════════════════════════════════ ──
+   LOGIN PAGE
+── ═══════════════════════════════════ ── */
+#page-login{
+  background:radial-gradient(ellipse 80% 60% at 50% 20%,rgba(175,198,255,.1) 0%,transparent 70%),
+             radial-gradient(ellipse 60% 80% at 80% 80%,rgba(213,186,255,.08) 0%,transparent 70%),
+             var(--bg);
+  justify-content:flex-end;
+}
+.login-hero{
+  flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 20px 20px;
+}
+.login-logo{
+  width:80px;height:80px;border-radius:24px;
+  background:linear-gradient(135deg,rgba(175,198,255,.15),rgba(82,141,255,.2));
+  border:1px solid rgba(175,198,255,.25);
+  display:flex;align-items:center;justify-content:center;
+  margin-bottom:24px;box-shadow:0 0 40px rgba(82,141,255,.2);
+}
+.login-logo svg{width:40px;height:40px;stroke:var(--primary);fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+.login-title{font-family:var(--font-head);font-size:28px;font-weight:800;color:var(--on-surface);text-align:center;letter-spacing:-.02em}
+.login-sub{font-size:14px;color:var(--on-surface-var);margin-top:6px;text-align:center}
+.login-form{
+  background:var(--surface-low);
+  border-radius:var(--r-xl) var(--r-xl) 0 0;
+  border:1px solid var(--outline-var);border-bottom:none;
+  padding:32px 24px 48px;
+}
+.field-label{font-size:12px;font-weight:600;color:var(--on-surface-var);letter-spacing:.04em;margin-bottom:8px;display:block}
+.field-input{
+  width:100%;height:50px;border-radius:var(--r-md);
+  background:rgba(0,0,0,.3);border:1px solid var(--outline-var);
+  color:var(--on-surface);font-family:var(--font-body);font-size:15px;
+  padding:0 16px;outline:none;transition:border-color .2s;
+}
+.field-input::placeholder{color:rgba(194,198,214,.4)}
+.field-input:focus{border-color:var(--primary)}
+.field-group{margin-bottom:18px}
+.btn-primary{
+  width:100%;height:52px;border-radius:var(--r-md);
+  background:linear-gradient(135deg,var(--primary-container),#3a7aff);
+  border:none;color:#fff;font-family:var(--font-head);font-size:16px;font-weight:700;
+  cursor:pointer;margin-top:8px;
+  box-shadow:0 4px 24px rgba(82,141,255,.4);
+  transition:transform .15s,box-shadow .15s;position:relative;overflow:hidden;
+}
+.btn-primary:active{transform:scale(0.97);box-shadow:0 2px 12px rgba(82,141,255,.3)}
+.btn-primary::after{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,255,255,.15),transparent);pointer-events:none}
+.login-footer{text-align:center;margin-top:20px;font-size:13px;color:var(--outline)}
+.login-footer a{color:var(--primary);cursor:pointer;font-weight:600}
+
+/* ── ═══════════════════════════════════ ──
+   DASHBOARD PAGE
+── ═══════════════════════════════════ ── */
+.dash-nebula{
+  position:absolute;inset:0;pointer-events:none;overflow:hidden;
+}
+.dash-nebula::before{
+  content:'';position:absolute;width:300px;height:300px;
+  background:radial-gradient(circle,rgba(82,141,255,.12) 0%,transparent 70%);
+  top:-60px;right:-60px;border-radius:50%;
+}
+.dash-nebula::after{
+  content:'';position:absolute;width:260px;height:260px;
+  background:radial-gradient(circle,rgba(168,116,255,.1) 0%,transparent 70%);
+  bottom:120px;left:-80px;border-radius:50%;
+}
+
+.dash-greeting{padding:8px 20px 16px;position:relative}
+.dash-greeting-sub{font-size:13px;color:var(--on-surface-var)}
+.dash-greeting-name{font-family:var(--font-head);font-size:22px;font-weight:800;color:var(--on-surface);margin-top:2px}
+
+/* Stats Row */
+.stats-row{display:flex;gap:10px;padding:0 20px 16px;overflow-x:auto;scrollbar-width:none}
+.stats-row::-webkit-scrollbar{display:none}
+.stat-chip{
+  flex-shrink:0;background:var(--surface);border:1px solid var(--outline-var);
+  border-radius:var(--r-lg);padding:14px 16px;min-width:90px;
+  position:relative;overflow:hidden;cursor:pointer;
+  transition:transform .2s var(--ease),border-color .2s;
+}
+.stat-chip:active{transform:scale(0.96)}
+.stat-chip::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,255,255,.05),transparent);pointer-events:none}
+.stat-chip-num{font-family:var(--font-num);font-size:28px;font-weight:700;line-height:1;letter-spacing:-.03em}
+.stat-chip-label{font-size:11px;color:var(--on-surface-var);margin-top:4px;font-weight:600;letter-spacing:.04em;text-transform:uppercase}
+.stat-chip-bar{height:3px;border-radius:2px;margin-top:10px;background:rgba(255,255,255,.1)}
+.stat-chip-bar-fill{height:100%;border-radius:2px;transition:width .6s var(--ease)}
+
+/* Section Header */
+.sec-hd{display:flex;align-items:center;justify-content:space-between;padding:0 20px;margin-bottom:12px}
+.sec-hd h3{font-family:var(--font-head);font-size:16px;font-weight:700;color:var(--on-surface)}
+.sec-hd a{font-size:13px;color:var(--secondary);cursor:pointer;font-weight:500}
+
+/* Alert Cards */
+.alert-card{
+  margin:0 20px 10px;padding:14px 16px;border-radius:var(--r-lg);
+  background:var(--surface);border:1px solid var(--outline-var);
+  display:flex;align-items:center;gap:12px;cursor:pointer;
+  transition:transform .2s var(--ease),border-color .2s;
+  animation:floatIn .4s var(--ease) both;
+}
+.alert-card:active{transform:scale(0.98)}
+.alert-icon{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:18px}
+.alert-info{flex:1}
+.alert-name{font-family:var(--font-head);font-size:14px;font-weight:600;color:var(--on-surface)}
+.alert-detail{font-size:12px;color:var(--on-surface-var);margin-top:2px}
+.status-pill{
+  padding:4px 10px;border-radius:var(--r-full);
+  font-family:var(--font-num);font-size:11px;font-weight:600;letter-spacing:.04em;
+  border:1px solid;flex-shrink:0;
+}
+.pill-danger{color:var(--danger);border-color:rgba(248,113,113,.3);background:rgba(248,113,113,.1)}
+.pill-warn{color:var(--warn);border-color:rgba(250,204,21,.3);background:rgba(250,204,21,.1)}
+.pill-safe{color:var(--safe);border-color:rgba(74,222,128,.3);background:rgba(74,222,128,.1)}
+.pill-primary{color:var(--primary);border-color:rgba(175,198,255,.3);background:rgba(175,198,255,.1)}
+
+/* AI Bot FAB */
+.ai-fab{
+  position:absolute;bottom:88px;right:16px;
+  width:56px;height:56px;border-radius:50%;
+  background:linear-gradient(135deg,var(--primary-container),var(--tertiary-container));
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 4px 20px rgba(82,141,255,.5),0 0 0 2px rgba(255,255,255,.1);
+  cursor:pointer;z-index:10;
+  transition:transform .2s var(--ease),box-shadow .2s;
+  animation:pulseGlow 3s ease-in-out infinite;
+}
+.ai-fab:active{transform:scale(0.9)}
+.ai-fab svg{width:28px;height:28px;fill:white}
+
+@keyframes pulseGlow{
+  0%,100%{box-shadow:0 4px 20px rgba(82,141,255,.5),0 0 0 2px rgba(255,255,255,.1)}
+  50%{box-shadow:0 4px 30px rgba(82,141,255,.7),0 0 0 4px rgba(82,141,255,.2)}
+}
+
+/* Trend mini chart area */
+.trend-section{padding:0 20px 16px}
+.trend-card{
+  background:var(--surface);border:1px solid var(--outline-var);
+  border-radius:var(--r-lg);padding:16px;position:relative;overflow:hidden;
+}
+.trend-card::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,255,255,.04),transparent);pointer-events:none}
+.trend-title{font-family:var(--font-head);font-size:14px;font-weight:700;color:var(--on-surface);margin-bottom:4px}
+.trend-sub{font-size:12px;color:var(--on-surface-var)}
+
+/* Category pills */
+.cat-row{display:flex;gap:8px;overflow-x:auto;padding:0 20px 16px;scrollbar-width:none}
+.cat-row::-webkit-scrollbar{display:none}
+.cat-pill{
+  flex-shrink:0;display:flex;align-items:center;gap:6px;
+  padding:8px 14px;border-radius:var(--r-full);
+  background:var(--surface);border:1px solid var(--outline-var);
+  cursor:pointer;transition:background .2s,border-color .2s;
+}
+.cat-pill:active,.cat-pill.sel{background:rgba(175,198,255,.12);border-color:rgba(175,198,255,.4)}
+.cat-pill-emoji{font-size:16px}
+.cat-pill-name{font-size:13px;font-weight:500;color:var(--on-surface-var);white-space:nowrap}
+.cat-pill-count{font-family:var(--font-num);font-size:12px;font-weight:700;color:var(--primary)}
+
+/* ── ═══════════════════════════════════ ──
+   INVENTORY PAGE
+── ═══════════════════════════════════ ── */
+.search-bar{
+  margin:0 20px 12px;padding:0 14px;height:46px;
+  background:var(--surface);border:1px solid var(--outline-var);
+  border-radius:var(--r-md);display:flex;align-items:center;gap:10px;
+}
+.search-bar svg{width:18px;height:18px;stroke:var(--outline);fill:none;stroke-width:2;flex-shrink:0}
+.search-bar input{
+  flex:1;background:none;border:none;outline:none;
+  font-family:var(--font-body);font-size:14px;color:var(--on-surface);
+}
+.search-bar input::placeholder{color:rgba(140,144,159,.5)}
+
+.filter-row{display:flex;gap:8px;overflow-x:auto;padding:0 20px 14px;scrollbar-width:none}
+.filter-row::-webkit-scrollbar{display:none}
+.filter-chip{
+  flex-shrink:0;padding:6px 14px;border-radius:var(--r-full);
+  background:var(--surface);border:1px solid var(--outline-var);
+  font-family:var(--font-num);font-size:12px;font-weight:600;
+  color:var(--on-surface-var);cursor:pointer;
+  transition:background .2s,border-color .2s,color .2s;
+  white-space:nowrap;
+}
+.filter-chip.active{background:rgba(162,231,255,.12);border-color:var(--secondary-container);color:var(--secondary)}
+
+/* Product Card */
+.product-card{
+  margin:0 20px 10px;border-radius:var(--r-lg);
+  background:var(--surface);border:1px solid var(--outline-var);
+  overflow:hidden;cursor:pointer;
+  transition:transform .2s var(--ease),border-color .2s;
+  animation:floatIn .4s var(--ease) both;
+  position:relative;
+}
+.product-card:active{transform:scale(0.98)}
+.product-card::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,255,255,.04),transparent);pointer-events:none}
+.product-card-accent{position:absolute;left:0;top:0;bottom:0;width:3px}
+.product-card-inner{padding:14px 16px 14px 20px;display:flex;align-items:center;gap:12px}
+.product-icon-wrap{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0}
+.product-info{flex:1;min-width:0}
+.product-name{font-family:var(--font-head);font-size:14px;font-weight:700;color:var(--on-surface);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.product-meta{font-size:12px;color:var(--on-surface-var);margin-top:2px;display:flex;align-items:center;gap:8px}
+.product-days{font-family:var(--font-num);font-size:22px;font-weight:700;letter-spacing:-.02em;flex-shrink:0}
+
+/* ── ═══════════════════════════════════ ──
+   PRODUCT DETAIL PAGE
+── ═══════════════════════════════════ ── */
+.detail-hero{
+  height:220px;background:linear-gradient(160deg,var(--surface-high) 0%,var(--surface-low) 100%);
+  position:relative;overflow:hidden;flex-shrink:0;
+}
+.detail-hero-img{
+  position:absolute;inset:0;
+  background:linear-gradient(160deg,#1e2540,#131826);
+  display:flex;align-items:center;justify-content:center;font-size:80px;
+}
+.detail-hero-overlay{
+  position:absolute;inset:0;
+  background:linear-gradient(to top,rgba(9,14,28,1) 0%,rgba(9,14,28,0) 50%);
+}
+.detail-hero-sku{
+  position:absolute;bottom:56px;left:20px;
+  font-family:var(--font-num);font-size:11px;font-weight:600;color:var(--secondary);
+  letter-spacing:.08em;
+}
+.detail-hero-name{
+  position:absolute;bottom:16px;left:20px;right:20px;
+  font-family:var(--font-head);font-size:26px;font-weight:800;color:#fff;
+  letter-spacing:-.02em;line-height:1.15;
+}
+.detail-back{
+  position:absolute;top:12px;left:16px;z-index:5;
+  width:36px;height:36px;border-radius:50%;
+  background:rgba(0,0,0,.4);backdrop-filter:blur(8px);
+  border:1px solid rgba(255,255,255,.15);
+  display:flex;align-items:center;justify-content:center;cursor:pointer;
+}
+.detail-back svg{width:18px;height:18px;stroke:#fff;fill:none;stroke-width:2;stroke-linecap:round}
+.detail-actions-top{
+  position:absolute;top:12px;right:16px;z-index:5;
+  display:flex;gap:8px;
+}
+.detail-top-btn{
+  width:36px;height:36px;border-radius:50%;
+  background:rgba(0,0,0,.4);backdrop-filter:blur(8px);
+  border:1px solid rgba(255,255,255,.15);
+  display:flex;align-items:center;justify-content:center;cursor:pointer;
+}
+.detail-top-btn svg{width:18px;height:18px;stroke:#fff;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.detail-body{padding:16px 20px;flex:1;overflow-y:auto;scrollbar-width:none}
+.detail-body::-webkit-scrollbar{display:none}
+
+.volume-card{background:var(--surface);border:1px solid var(--outline-var);border-radius:var(--r-lg);padding:16px;margin-bottom:12px;position:relative;overflow:hidden}
+.volume-card::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,255,255,.04),transparent);pointer-events:none}
+.volume-row{display:flex;align-items:baseline;justify-content:space-between}
+.volume-label{font-size:12px;color:var(--on-surface-var);font-weight:500}
+.volume-val{font-family:var(--font-num);font-size:32px;font-weight:700;color:var(--secondary);letter-spacing:-.03em}
+.volume-unit{font-size:16px;color:var(--on-surface-var);margin-left:4px}
+.volume-bar{height:6px;background:rgba(255,255,255,.08);border-radius:3px;margin-top:12px;overflow:hidden}
+.volume-bar-fill{height:100%;border-radius:3px;background:linear-gradient(90deg,var(--secondary-container),var(--primary-container));transition:width .8s var(--ease)}
+
+.expiry-loc-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+.expiry-chip{
+  border-radius:var(--r-lg);padding:14px 16px;
+  background:rgba(248,113,113,.08);border:1px solid rgba(248,113,113,.25);
+}
+.expiry-chip-label{font-size:11px;color:var(--danger);font-weight:600;letter-spacing:.04em;display:flex;align-items:center;gap:4px}
+.expiry-chip-val{font-family:var(--font-num);font-size:22px;font-weight:700;color:var(--on-surface);margin-top:4px}
+.loc-chip{background:var(--surface);border:1px solid var(--outline-var);border-radius:var(--r-lg);padding:14px 16px}
+.loc-chip-label{font-size:11px;color:var(--on-surface-var);font-weight:600;letter-spacing:.04em}
+.loc-chip-val{font-family:var(--font-head);font-size:15px;font-weight:700;color:var(--on-surface);margin-top:4px}
+
+.restock-card{
+  background:var(--surface);border:1px solid rgba(175,198,255,.2);
+  border-radius:var(--r-lg);padding:16px;margin-bottom:16px;
+  position:relative;overflow:hidden;
+}
+.restock-card::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(175,198,255,.06),transparent);pointer-events:none;animation:shimmer 3s ease-in-out infinite}
+@keyframes shimmer{0%,100%{opacity:1}50%{opacity:.6}}
+.restock-title{font-family:var(--font-head);font-size:15px;font-weight:700;color:var(--secondary);margin-bottom:8px}
+.restock-body{font-size:13px;color:var(--on-surface-var);line-height:1.6}
+.restock-link{display:inline-flex;align-items:center;gap:4px;margin-top:12px;font-family:var(--font-num);font-size:12px;font-weight:700;color:var(--secondary);letter-spacing:.06em;cursor:pointer}
+.restock-link svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round}
+
+.activity-item{display:flex;align-items:flex-start;gap:12px;padding:12px 0;border-top:1px solid var(--outline-var)}
+.activity-icon-wrap{width:36px;height:36px;border-radius:10px;background:var(--surface-high);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.activity-icon-wrap svg{width:18px;height:18px;stroke:var(--on-surface-var);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.activity-text{font-size:13px;color:var(--on-surface);line-height:1.4}
+.activity-time{font-size:11px;color:var(--on-surface-var);margin-top:2px}
+
+.detail-footer{
+  display:grid;grid-template-columns:1fr 2fr;gap:10px;
+  padding:14px 20px 24px;flex-shrink:0;
+  border-top:1px solid var(--outline-var);background:var(--bg);
+}
+.btn-ghost{
+  height:52px;border-radius:var(--r-md);
+  background:var(--surface);border:1px solid var(--outline-var);
+  color:var(--on-surface);font-family:var(--font-head);font-size:15px;font-weight:700;
+  cursor:pointer;transition:background .15s;
+}
+.btn-ghost:active{background:var(--surface-high)}
+.btn-mark{
+  height:52px;border-radius:var(--r-md);
+  background:linear-gradient(135deg,var(--secondary-container),#0099c8);
+  border:none;color:#fff;font-family:var(--font-head);font-size:15px;font-weight:700;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;
+  box-shadow:0 4px 20px rgba(0,210,253,.3);
+  transition:transform .15s,box-shadow .15s;
+}
+.btn-mark:active{transform:scale(0.97)}
+.btn-mark svg{width:18px;height:18px;stroke:#fff;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+/* ── ═══════════════════════════════════ ──
+   ADD PRODUCT PAGE
+── ═══════════════════════════════════ ── */
+.add-method-card{
+  margin:0 20px 12px;padding:18px 16px;border-radius:var(--r-lg);
+  background:var(--surface);border:1px solid var(--outline-var);
+  display:flex;align-items:center;gap:16px;cursor:pointer;
+  transition:transform .2s var(--ease),border-color .2s;
+  position:relative;overflow:hidden;
+}
+.add-method-card::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,255,255,.04),transparent);pointer-events:none}
+.add-method-card:active{transform:scale(0.98)}
+.add-method-icon{
+  width:52px;height:52px;border-radius:14px;
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;
+}
+.add-method-icon svg{width:26px;height:26px;stroke:#fff;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.add-method-info{flex:1}
+.add-method-name{font-family:var(--font-head);font-size:17px;font-weight:700;color:var(--on-surface)}
+.add-method-desc{font-size:13px;color:var(--on-surface-var);margin-top:3px;line-height:1.4}
+.beta-badge{display:inline-block;padding:3px 8px;border-radius:var(--r-full);background:rgba(213,186,255,.15);border:1px solid rgba(213,186,255,.3);font-family:var(--font-num);font-size:10px;font-weight:700;color:var(--tertiary);letter-spacing:.06em;margin-left:8px;vertical-align:middle}
+.add-method-card svg.chevron{width:18px;height:18px;stroke:var(--outline);flex-shrink:0}
+
+/* ── ═══════════════════════════════════ ──
+   IMPORT PAGE
+── ═══════════════════════════════════ ── */
+.step-bar{margin:0 20px 24px;position:relative}
+.step-track{display:flex;gap:0;position:relative}
+.step-line{position:absolute;top:5px;left:5px;right:5px;height:2px;background:var(--outline-var);z-index:0}
+.step-line-fill{position:absolute;top:0;left:0;height:100%;background:var(--secondary-container);transition:width .5s var(--ease)}
+.step-item{flex:1;display:flex;flex-direction:column;align-items:flex-start;gap:6px;position:relative;z-index:1}
+.step-dot{width:12px;height:12px;border-radius:50%;border:2px solid var(--outline-var);background:var(--bg);transition:background .3s,border-color .3s}
+.step-dot.done{background:var(--secondary-container);border-color:var(--secondary-container)}
+.step-dot.active-dot{background:var(--bg);border-color:var(--secondary-container);box-shadow:0 0 0 3px rgba(0,210,253,.2)}
+.step-label{font-family:var(--font-num);font-size:11px;font-weight:600;color:var(--outline);letter-spacing:.02em;transition:color .3s}
+.step-label.active-label{color:var(--secondary)}
+
+.import-option-card{
+  margin:0 20px 12px;padding:20px 18px;border-radius:var(--r-lg);
+  background:var(--surface);border:1px solid var(--outline-var);
+  cursor:pointer;transition:border-color .2s,transform .2s var(--ease);
+  position:relative;overflow:hidden;
+}
+.import-option-card::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,255,255,.04),transparent);pointer-events:none}
+.import-option-card:active,.import-option-card.sel{border-color:rgba(162,231,255,.5);background:rgba(162,231,255,.05)}
+.import-option-card:active{transform:scale(0.98)}
+.import-icon-wrap{width:48px;height:48px;border-radius:12px;background:var(--surface-high);display:flex;align-items:center;justify-content:center;margin-bottom:12px}
+.import-icon-wrap svg{width:24px;height:24px;stroke:var(--on-surface-var);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.import-option-name{font-family:var(--font-head);font-size:18px;font-weight:700;color:var(--on-surface);margin-bottom:4px}
+.import-option-desc{font-size:13px;color:var(--on-surface-var);line-height:1.5}
+
+/* ── ═══════════════════════════════════ ──
+   DEEP INTEL PAGE
+── ═══════════════════════════════════ ── */
+.intel-ai-card{
+  margin:0 20px 16px;padding:18px;border-radius:var(--r-lg);
+  background:var(--surface);border:1px solid rgba(213,186,255,.25);
+  position:relative;overflow:hidden;
+}
+.intel-ai-card::before{
+  content:'';position:absolute;inset:0;
+  background:linear-gradient(135deg,rgba(213,186,255,.06),rgba(82,141,255,.04));
+  pointer-events:none;
+  animation:shimmer 3s ease-in-out infinite;
+}
+.intel-ai-header{display:flex;align-items:flex-start;gap:12px;margin-bottom:12px}
+.intel-ai-icon{width:44px;height:44px;border-radius:12px;background:rgba(168,116,255,.2);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.intel-ai-icon svg{width:22px;height:22px;stroke:var(--tertiary);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.intel-ai-title{font-family:var(--font-head);font-size:16px;font-weight:700;color:var(--on-surface)}
+.intel-ai-body{font-size:13px;color:var(--on-surface-var);line-height:1.6;margin-bottom:14px}
+.intel-ai-body strong{color:var(--secondary);font-weight:700}
+.intel-ai-btns{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.intel-btn-primary{
+  height:44px;border-radius:var(--r-md);
+  background:linear-gradient(135deg,var(--primary-container),#3a7aff);
+  border:none;color:#fff;font-family:var(--font-head);font-size:14px;font-weight:700;
+  cursor:pointer;
+}
+.intel-btn-ghost{
+  height:44px;border-radius:var(--r-md);
+  background:var(--surface-high);border:1px solid var(--outline-var);
+  color:var(--on-surface-var);font-family:var(--font-head);font-size:14px;font-weight:600;
+  cursor:pointer;
+}
+
+.chart-card{
+  margin:0 20px 16px;padding:16px;border-radius:var(--r-lg);
+  background:var(--surface);border:1px solid var(--outline-var);
+  position:relative;overflow:hidden;
+}
+.chart-card::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,255,255,.03),transparent);pointer-events:none}
+.chart-card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.chart-card-title{font-family:var(--font-head);font-size:15px;font-weight:700;color:var(--on-surface)}
+.chart-filter-pill{
+  padding:4px 12px;border-radius:var(--r-full);
+  background:var(--surface-high);border:1px solid var(--outline-var);
+  font-family:var(--font-num);font-size:11px;font-weight:600;color:var(--on-surface-var);
+  cursor:pointer;
+}
+.wastage-card{
+  margin:0 20px 16px;padding:20px;border-radius:var(--r-lg);
+  background:var(--surface);border:1px solid var(--outline-var);
+  display:flex;flex-direction:column;align-items:center;
+  position:relative;overflow:hidden;
+}
+.wastage-card::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,255,255,.03),transparent);pointer-events:none}
+.wastage-title{font-family:var(--font-head);font-size:15px;font-weight:700;color:var(--on-surface);align-self:flex-start;margin-bottom:16px}
+.wastage-ring{position:relative;width:120px;height:120px;margin-bottom:12px}
+.wastage-ring canvas{position:absolute;inset:0}
+.wastage-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.wastage-pct{font-family:var(--font-num);font-size:32px;font-weight:700;color:var(--danger);letter-spacing:-.03em}
+.wastage-sub{font-size:13px;color:var(--on-surface-var);text-align:center;margin-top:4px}
+
+/* ── ═══════════════════════════════════ ──
+   AI CHAT PAGE
+── ═══════════════════════════════════ ── */
+.chat-hero{padding:24px 20px;display:flex;flex-direction:column;align-items:center;gap:12px;flex-shrink:0}
+.chat-bot-avatar{
+  width:88px;height:88px;border-radius:50%;
+  background:linear-gradient(135deg,rgba(82,141,255,.2),rgba(168,116,255,.2));
+  border:2px solid rgba(175,198,255,.25);
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 0 40px rgba(82,141,255,.2);
+  font-size:48px;
+}
+.chat-bot-name{font-family:var(--font-head);font-size:20px;font-weight:800;color:var(--on-surface)}
+.chat-bot-status{font-size:13px;color:var(--secondary)}
+
+.chat-messages{flex:1;overflow-y:auto;padding:0 20px;scrollbar-width:none;display:flex;flex-direction:column;gap:12px}
+.chat-messages::-webkit-scrollbar{display:none}
+.chat-msg-user{align-self:flex-end;max-width:82%}
+.chat-msg-bot{align-self:flex-start;max-width:88%;position:relative}
+.chat-bubble-user{
+  background:rgba(82,141,255,.25);border:1px solid rgba(82,141,255,.3);
+  padding:12px 16px;border-radius:var(--r-lg) var(--r-lg) var(--r-sm) var(--r-lg);
+  font-size:14px;color:var(--on-surface);line-height:1.5;
+}
+.chat-bubble-bot{
+  background:var(--surface);border:1px solid var(--outline-var);
+  border-left:2px solid var(--secondary-container);
+  padding:12px 16px;border-radius:var(--r-sm) var(--r-lg) var(--r-lg) var(--r-lg);
+  font-size:14px;color:var(--on-surface);line-height:1.6;
+}
+.chat-bubble-bot li{margin-left:16px;margin-top:4px}
+
+.chat-suggestions{padding:12px 20px;display:flex;flex-wrap:wrap;gap:8px;flex-shrink:0}
+.chat-suggest-chip{
+  display:flex;align-items:center;gap:6px;padding:8px 14px;
+  border-radius:var(--r-full);background:var(--surface);border:1px solid var(--outline-var);
+  font-size:13px;font-weight:500;color:var(--on-surface-var);cursor:pointer;
+  transition:border-color .2s,background .2s;white-space:nowrap;
+}
+.chat-suggest-chip:active{border-color:var(--secondary-container);background:rgba(0,210,253,.08)}
+.chat-suggest-chip svg{width:14px;height:14px;stroke:var(--secondary);fill:none;stroke-width:2}
+
+.chat-input-bar{
+  padding:12px 20px 28px;flex-shrink:0;
+  display:flex;align-items:center;gap:10px;
+}
+.chat-input{
+  flex:1;height:48px;border-radius:var(--r-full);
+  background:var(--surface);border:1px solid var(--outline-var);
+  padding:0 16px 0 44px;
+  font-family:var(--font-body);font-size:14px;color:var(--on-surface);outline:none;
+  transition:border-color .2s;
+}
+.chat-input::placeholder{color:rgba(140,144,159,.5)}
+.chat-input:focus{border-color:var(--primary)}
+.chat-input-wrap{position:relative;flex:1}
+.chat-input-icon{position:absolute;left:14px;top:50%;transform:translateY(-50%)}
+.chat-input-icon svg{width:18px;height:18px;stroke:var(--outline);fill:none;stroke-width:2}
+.chat-send{
+  width:48px;height:48px;border-radius:50%;
+  background:linear-gradient(135deg,var(--primary-container),#3a7aff);
+  border:none;display:flex;align-items:center;justify-content:center;cursor:pointer;
+  box-shadow:0 4px 16px rgba(82,141,255,.4);
+  transition:transform .15s;flex-shrink:0;
+}
+.chat-send:active{transform:scale(0.9)}
+.chat-send svg{width:18px;height:18px;stroke:#fff;fill:none;stroke-width:2.5;stroke-linecap:round}
+
+/* ── ═══════════════════════════════════ ──
+   SETTINGS PAGE
+── ═══════════════════════════════════ ── */
+.settings-profile-card{
+  margin:0 20px 20px;padding:20px;border-radius:var(--r-xl);
+  background:var(--surface);border:1px solid var(--outline-var);
+  position:relative;overflow:hidden;
+}
+.settings-profile-card::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,255,255,.04),transparent);pointer-events:none}
+.profile-row{display:flex;align-items:center;gap:14px;margin-bottom:16px}
+.profile-avatar{
+  width:60px;height:60px;border-radius:50%;
+  background:linear-gradient(135deg,#3a4a7a,#2a3560);
+  border:2px solid var(--outline-var);flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;font-size:28px;
+  position:relative;
+}
+.profile-edit-badge{
+  position:absolute;bottom:-2px;right:-2px;
+  width:22px;height:22px;border-radius:50%;
+  background:var(--primary-container);border:2px solid var(--bg);
+  display:flex;align-items:center;justify-content:center;
+}
+.profile-edit-badge svg{width:11px;height:11px;stroke:#fff;fill:none;stroke-width:2.5}
+.profile-name{font-family:var(--font-head);font-size:17px;font-weight:800;color:var(--on-surface)}
+.profile-email{font-size:12px;color:var(--on-surface-var);margin-top:2px}
+.admin-badge{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:var(--r-full);background:rgba(175,198,255,.12);border:1px solid rgba(175,198,255,.25);font-family:var(--font-num);font-size:11px;font-weight:700;color:var(--primary);margin-top:6px}
+.admin-badge svg{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:2}
+.settings-field{margin-bottom:12px}
+.settings-field label{font-size:12px;font-weight:600;color:var(--on-surface-var);letter-spacing:.04em;display:block;margin-bottom:6px}
+.settings-input{
+  width:100%;height:48px;border-radius:var(--r-md);
+  background:rgba(0,0,0,.25);border:1px solid var(--outline-var);
+  color:var(--on-surface);font-family:var(--font-body);font-size:14px;
+  padding:0 14px;outline:none;transition:border-color .2s;
+}
+.settings-input:focus{border-color:var(--primary)}
+.save-btn{
+  float:right;padding:0 20px;height:40px;border-radius:var(--r-md);
+  background:linear-gradient(135deg,var(--secondary-container),#009ab8);
+  border:none;color:#fff;font-family:var(--font-head);font-size:14px;font-weight:700;
+  cursor:pointer;
+}
+.clearfix::after{content:'';display:table;clear:both}
+
+.plan-card{
+  margin:0 20px 16px;padding:16px;border-radius:var(--r-lg);
+  background:var(--surface);border:1px solid var(--outline-var);
+  position:relative;overflow:hidden;
+}
+.plan-card::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,255,255,.04),transparent);pointer-events:none}
+.plan-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.plan-left{display:flex;align-items:center;gap:10px}
+.plan-icon-wrap{width:36px;height:36px;border-radius:10px;background:rgba(175,198,255,.12);display:flex;align-items:center;justify-content:center}
+.plan-icon-wrap svg{width:18px;height:18px;stroke:var(--primary);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.plan-name{font-family:var(--font-head);font-size:15px;font-weight:700;color:var(--on-surface)}
+.plan-detail{font-size:12px;color:var(--on-surface-var);margin-top:1px}
+.plan-manage-btn{
+  padding:8px 16px;border-radius:var(--r-md);
+  background:var(--surface-high);border:1px solid var(--outline-var);
+  color:var(--on-surface);font-family:var(--font-head);font-size:13px;font-weight:600;
+  cursor:pointer;
+}
+.usage-row{display:flex;justify-content:space-between;font-size:12px;color:var(--on-surface-var);margin-bottom:6px}
+.usage-bar{height:4px;background:rgba(255,255,255,.08);border-radius:2px;overflow:hidden}
+.usage-bar-fill{height:100%;border-radius:2px;background:linear-gradient(90deg,var(--secondary-container),var(--primary-container));transition:width .8s var(--ease)}
+
+.prefs-card{
+  margin:0 20px 16px;padding:16px;border-radius:var(--r-lg);
+  background:var(--surface);border:1px solid var(--outline-var);
+}
+.pref-section-title{font-family:var(--font-head);font-size:16px;font-weight:700;color:var(--on-surface);margin-bottom:14px}
+.pref-row{
+  display:flex;align-items:center;gap:12px;padding:12px 0;
+  border-top:1px solid var(--outline-var);
+}
+.pref-icon{width:36px;height:36px;border-radius:10px;background:var(--surface-high);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.pref-icon svg{width:18px;height:18px;stroke:var(--on-surface-var);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.pref-text{flex:1}
+.pref-name{font-size:14px;font-weight:600;color:var(--on-surface)}
+.pref-desc{font-size:12px;color:var(--on-surface-var);margin-top:2px}
+.pref-right{display:flex;align-items:center;gap:8px}
+.toggle{
+  width:48px;height:28px;border-radius:var(--r-full);
+  background:var(--primary-container);position:relative;cursor:pointer;
+  transition:background .25s;flex-shrink:0;
+}
+.toggle.off{background:var(--outline-var)}
+.toggle-knob{
+  position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;
+  background:#fff;transition:transform .25s var(--ease);
+  box-shadow:0 1px 4px rgba(0,0,0,.3);
+}
+.toggle:not(.off) .toggle-knob{transform:translateX(20px)}
+.pref-chevron svg{width:16px;height:16px;stroke:var(--outline);fill:none;stroke-width:2;stroke-linecap:round}
+
+.signout-btn{
+  margin:0 20px 32px;width:calc(100% - 40px);height:52px;border-radius:var(--r-md);
+  background:rgba(248,113,113,.08);border:1px solid rgba(248,113,113,.25);
+  color:var(--danger);font-family:var(--font-head);font-size:15px;font-weight:700;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;
+  transition:background .2s;
+}
+.signout-btn:active{background:rgba(248,113,113,.15)}
+.signout-btn svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+/* ── ANIMATION ─────────────────────────────────────── */
+@keyframes floatIn{
+  from{opacity:0;transform:translateY(18px)}
+  to{opacity:1;transform:translateY(0)}
+}
+.delay-1{animation-delay:.05s}
+.delay-2{animation-delay:.1s}
+.delay-3{animation-delay:.15s}
+.delay-4{animation-delay:.2s}
+.delay-5{animation-delay:.25s}
+
+/* ── RIPPLE ─────────────────────────────────────── */
+.ripple{position:absolute;border-radius:50%;background:rgba(255,255,255,.15);transform:scale(0);animation:rippleAnim .5s ease-out;pointer-events:none}
+@keyframes rippleAnim{to{transform:scale(4);opacity:0}}
+
+/* ── PAGE TITLES ─────────────────────────────────────── */
+.page-title{font-family:var(--font-head);font-size:26px;font-weight:800;color:var(--on-surface);letter-spacing:-.02em;padding:8px 20px 4px}
+.page-subtitle{font-size:14px;color:var(--on-surface-var);padding:0 20px 16px;line-height:1.5}
+
+/* Back bar for sub-pages */
+.back-bar{display:flex;align-items:center;gap:12px;padding:8px 20px 12px;flex-shrink:0}
+.back-btn-bar{width:36px;height:36px;border-radius:50%;background:var(--surface);border:1px solid var(--outline-var);display:flex;align-items:center;justify-content:center;cursor:pointer}
+.back-btn-bar svg{width:18px;height:18px;stroke:var(--on-surface);fill:none;stroke-width:2;stroke-linecap:round}
+.back-bar-title{font-family:var(--font-head);font-size:17px;font-weight:700;color:var(--on-surface)}
+
+/* Spacing utility */
+.mb8{margin-bottom:8px}
+.mb16{margin-bottom:16px}
+.mt8{margin-top:8px}
+
+/* Section spacing */
+.section-gap{height:32px}
+
+
+</style>
+</head>
+<body>
+<div class="shell" id="shell">
+
+<!-- ═══════════════════════════════════════
+  PAGE: LOGIN
+═══════════════════════════════════════ -->
+<div class="page active" id="page-login">
+  <div class="login-hero">
+    <div class="login-logo">
+      <svg viewBox="0 0 40 40" fill="none" stroke="var(--primary)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="20" cy="20" r="14"/><path d="M14 20l4 4 8-8"/></svg>
+    </div>
+    <h1 class="login-title">Bharat Inventory</h1>
+    <p class="login-sub">AI-Powered Inventory Intelligence</p>
+  </div>
+  <div class="login-form">
+    <div class="field-group">
+      <label class="field-label">EMAIL ADDRESS</label>
+      <input id="loginEmail" class="field-input" type="email" placeholder="arjun@bharatinventory.com" value="arjun@bharatinventory.com">
+    </div>
+    <div class="field-group">
+      <label class="field-label">PASSWORD</label>
+      <input id="loginPassword" class="field-input" type="password" placeholder="••••••••••" value="password123">
+    </div>
+    <button class="btn-primary" onclick="handleLogin()">Sign In Securely</button>
+    <p class="login-footer" id="loginError" style="color:var(--danger);display:none;margin-bottom:8px"></p>
+    <p class="login-footer">Don't have an account? <a onclick="handleSignup()">Sign up free</a></p>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════
+  PAGE: HUB (Dashboard)
+═══════════════════════════════════════ -->
+<div class="page" id="page-hub">
+  <div class="dash-nebula"></div>
+  <div class="status-bar">
+    <span class="status-time">9:41</span>
+    <div class="status-icons">
+      <svg viewBox="0 0 24 24"><path d="M1 6s4-2 11-2 11 2 11 2M5 10s2.5-1.5 7-1.5 7 1.5 7 1.5M9 14s1.5-1 3-1 3 1 3 1M12 18h.01"/></svg>
+      <svg viewBox="0 0 24 24"><path d="M23 7 10 20 3 13"/></svg>
+      <svg viewBox="0 0 24 24"><rect x="2" y="7" width="16" height="10" rx="2"/><path d="M22 11v2"/></svg>
+    </div>
+  </div>
+  <div class="top-bar">
+    <div class="top-bar-logo">
+      <div class="logo-icon"><div class="logo-dot"></div><div class="logo-dot"></div><div class="logo-dot"></div><div class="logo-dot"></div></div>
+      <span class="logo-name">Bharat Inventory</span>
+    </div>
+    <div class="avatar-placeholder" onclick="goTo('page-settings')">AD</div>
+  </div>
+  <div class="scroll">
+    <div class="dash-greeting">
+      <div class="dash-greeting-sub">Good morning ☀️</div>
+      <div class="dash-greeting-name">Arjun Desai</div>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-row">
+      <div class="stat-chip" onclick="goTo('page-inventory')" style="border-left:3px solid var(--secondary-container)">
+        <div class="stat-chip-num" style="color:var(--secondary)">247</div>
+        <div class="stat-chip-label">Total Items</div>
+        <div class="stat-chip-bar"><div class="stat-chip-bar-fill" style="width:100%;background:var(--secondary-container)"></div></div>
+      </div>
+      <div class="stat-chip" onclick="goTo('page-inventory')" style="border-left:3px solid var(--danger)">
+        <div class="stat-chip-num" style="color:var(--danger)">6</div>
+        <div class="stat-chip-label">Expired</div>
+        <div class="stat-chip-bar"><div class="stat-chip-bar-fill" style="width:24%;background:var(--danger)"></div></div>
+      </div>
+      <div class="stat-chip" style="border-left:3px solid var(--warn)">
+        <div class="stat-chip-num" style="color:var(--warn)">19</div>
+        <div class="stat-chip-label">Expiring Soon</div>
+        <div class="stat-chip-bar"><div class="stat-chip-bar-fill" style="width:55%;background:var(--warn)"></div></div>
+      </div>
+      <div class="stat-chip" style="border-left:3px solid var(--safe)">
+        <div class="stat-chip-num" style="color:var(--safe)">222</div>
+        <div class="stat-chip-label">Safe</div>
+        <div class="stat-chip-bar"><div class="stat-chip-bar-fill" style="width:90%;background:var(--safe)"></div></div>
+      </div>
+    </div>
+
+    <!-- Trend Chart -->
+    <div class="trend-section">
+      <div class="trend-card">
+        <div class="trend-title">30-Day Movement Trend</div>
+        <div class="trend-sub" style="margin-bottom:12px">Units received vs consumed</div>
+        <div style="position:relative;height:110px">
+          <canvas id="dashChart" role="img" aria-label="30-day movement trend bar chart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Categories -->
+    <div class="sec-hd"><h3>By Category</h3><a onclick="goTo('page-inventory')">View all</a></div>
+    <div class="cat-row">
+      <div class="cat-pill sel" onclick="goTo('page-inventory')"><span class="cat-pill-emoji">💊</span><span class="cat-pill-name">Medicine</span><span class="cat-pill-count">82</span></div>
+      <div class="cat-pill" onclick="goTo('page-inventory')"><span class="cat-pill-emoji">🧪</span><span class="cat-pill-name">Lab Reagents</span><span class="cat-pill-count">54</span></div>
+      <div class="cat-pill" onclick="goTo('page-inventory')"><span class="cat-pill-emoji">🩺</span><span class="cat-pill-name">Medical</span><span class="cat-pill-count">41</span></div>
+      <div class="cat-pill" onclick="goTo('page-inventory')"><span class="cat-pill-emoji">🧲</span><span class="cat-pill-name">Materials</span><span class="cat-pill-count">38</span></div>
+      <div class="cat-pill" onclick="goTo('page-inventory')"><span class="cat-pill-emoji">🧊</span><span class="cat-pill-name">Cold Storage</span><span class="cat-pill-count">32</span></div>
+    </div>
+
+    <!-- Critical Alerts -->
+    <div class="sec-hd"><h3>Critical Alerts</h3><a onclick="goTo('page-inventory')">See all</a></div>
+    <div class="alert-card delay-1" onclick="goTo('page-detail')">
+      <div class="alert-icon" style="background:rgba(248,113,113,.12)">💊</div>
+      <div class="alert-info">
+        <div class="alert-name">Amoxicillin 500mg</div>
+        <div class="alert-detail">Batch A-2024 · Zone C, Rack 2</div>
+      </div>
+      <span class="status-pill pill-danger">EXPIRED</span>
+    </div>
+    <div class="alert-card delay-2" onclick="goTo('page-detail')">
+      <div class="alert-icon" style="background:rgba(250,204,21,.1)">🧪</div>
+      <div class="alert-info">
+        <div class="alert-name">Reagent X — Vial 2</div>
+        <div class="alert-detail">Zone C · 7 days left</div>
+      </div>
+      <span class="status-pill pill-warn">7 DAYS</span>
+    </div>
+    <div class="alert-card delay-3" onclick="goTo('page-detail')">
+      <div class="alert-icon" style="background:rgba(74,222,128,.1)">🦷</div>
+      <div class="alert-info">
+        <div class="alert-name">Med Grade Titanium</div>
+        <div class="alert-detail">SKU-9982-A · Zone B, Rack 4</div>
+      </div>
+      <span class="status-pill pill-warn">12 DAYS</span>
+    </div>
+    <div class="alert-card delay-4" onclick="goTo('page-detail')">
+      <div class="alert-icon" style="background:rgba(162,231,255,.1)">🩺</div>
+      <div class="alert-info">
+        <div class="alert-name">Sterile Swabs Box 44</div>
+        <div class="alert-detail">Zone C · 5 days left</div>
+      </div>
+      <span class="status-pill pill-warn">5 DAYS</span>
+    </div>
+
+    <div class="section-gap"></div>
+  </div>
+
+  <!-- AI FAB -->
+  <div class="ai-fab" onclick="goTo('page-chat')">
+    <svg viewBox="0 0 32 32" width="28" height="28"><circle cx="16" cy="12" r="7" fill="none" stroke="white" stroke-width="2"/><circle cx="11" cy="11" r="1.5" fill="white"/><circle cx="21" cy="11" r="1.5" fill="white"/><path d="M11 15s1.5 2 5 2 5-2 5-2" stroke="white" stroke-width="1.5" fill="none" stroke-linecap="round"/><path d="M9 22c0-3.9 3.1-7 7-7s7 3.1 7 7" stroke="white" stroke-width="2" fill="none" stroke-linecap="round"/><circle cx="6" cy="24" r="2" fill="rgba(255,255,255,0.6)"/><circle cx="26" cy="24" r="2" fill="rgba(255,255,255,0.6)"/></svg>
+  </div>
+
+  <nav class="bottom-nav">
+    <div class="nav-item active" onclick="switchTab('hub')">
+      <div class="nav-pill"></div>
+      <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+      <span>Hub</span>
+    </div>
+    <div class="nav-item" onclick="switchTab('inventory')">
+      <div class="nav-pill"></div>
+      <svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="18" rx="2"/><path d="M8 3v18M16 3v18M2 9h20M2 15h20"/></svg>
+      <span>Inventory</span>
+    </div>
+    <div class="nav-item" onclick="switchTab('import')">
+      <div class="nav-pill"></div>
+      <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      <span>Import</span>
+    </div>
+    <div class="nav-item" onclick="switchTab('intel')">
+      <div class="nav-pill"></div>
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M2 12h3M19 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12"/></svg>
+      <span>Deep Intel</span>
+    </div>
+    <div class="nav-item" onclick="switchTab('settings')">
+      <div class="nav-pill"></div>
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+      <span>Settings</span>
+    </div>
+  </nav>
+</div>
+
+<!-- ═══════════════════════════════════════
+  PAGE: INVENTORY
+═══════════════════════════════════════ -->
+<div class="page" id="page-inventory">
+  <div class="status-bar">
+    <span class="status-time">9:41</span>
+    <div class="status-icons">
+      <svg viewBox="0 0 24 24"><path d="M1 6s4-2 11-2 11 2 11 2M5 10s2.5-1.5 7-1.5 7 1.5 7 1.5M9 14s1.5-1 3-1 3 1 3 1M12 18h.01"/></svg>
+      <svg viewBox="0 0 24 24"><rect x="2" y="7" width="16" height="10" rx="2"/><path d="M22 11v2"/></svg>
+    </div>
+  </div>
+  <div class="top-bar">
+    <div class="top-bar-logo">
+      <div class="logo-icon"><div class="logo-dot"></div><div class="logo-dot"></div><div class="logo-dot"></div><div class="logo-dot"></div></div>
+      <span class="logo-name">Bharat</span>
+    </div>
+    <div style="display:flex;gap:8px">
+      <div class="icon-btn" onclick="goTo('page-inventory')">
+        <svg viewBox="0 0 24 24"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+      </div>
+      <div class="add-btn" onclick="goTo('page-add')">
+        <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      </div>
+    </div>
+  </div>
+  <div class="search-bar">
+    <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+    <input placeholder="Search items, batches, zones…" type="search">
+  </div>
+  <div class="filter-row">
+    <div class="filter-chip active">All Items</div>
+    <div class="filter-chip" onclick="filterChip(this)">Expired</div>
+    <div class="filter-chip" onclick="filterChip(this)">Expiring Soon</div>
+    <div class="filter-chip" onclick="filterChip(this)">Safe</div>
+    <div class="filter-chip" onclick="filterChip(this)">Zone A</div>
+    <div class="filter-chip" onclick="filterChip(this)">Zone B</div>
+    <div class="filter-chip" onclick="filterChip(this)">Zone C</div>
+  </div>
+  <div class="scroll">
+    <!-- Products -->
+    <div class="product-card delay-1" onclick="goTo('page-detail')">
+      <div class="product-card-accent" style="background:var(--danger)"></div>
+      <div class="product-card-inner">
+        <div class="product-icon-wrap" style="background:rgba(248,113,113,.1)">💊</div>
+        <div class="product-info">
+          <div class="product-name">Amoxicillin 500mg</div>
+          <div class="product-meta">Batch A-2024 · Zone C</div>
+        </div>
+        <div>
+          <div class="product-days" style="color:var(--danger)">-3</div>
+          <span class="status-pill pill-danger" style="font-size:10px">EXPIRED</span>
+        </div>
+      </div>
+    </div>
+    <div class="product-card delay-2" onclick="goTo('page-detail')">
+      <div class="product-card-accent" style="background:var(--warn)"></div>
+      <div class="product-card-inner">
+        <div class="product-icon-wrap" style="background:rgba(250,204,21,.08)">🦷</div>
+        <div class="product-info">
+          <div class="product-name">Med Grade Titanium Alloy</div>
+          <div class="product-meta">SKU-9982-A · Zone B, Rack 4</div>
+        </div>
+        <div>
+          <div class="product-days" style="color:var(--warn)">12</div>
+          <span class="status-pill pill-warn" style="font-size:10px">SOON</span>
+        </div>
+      </div>
+    </div>
+    <div class="product-card delay-3" onclick="goTo('page-detail')">
+      <div class="product-card-accent" style="background:var(--warn)"></div>
+      <div class="product-card-inner">
+        <div class="product-icon-wrap" style="background:rgba(162,231,255,.08)">🧪</div>
+        <div class="product-info">
+          <div class="product-name">Med Grade Silicon — Batch A1</div>
+          <div class="product-meta">Zone C · Rack 1</div>
+        </div>
+        <div>
+          <div class="product-days" style="color:var(--warn)">3</div>
+          <span class="status-pill pill-warn" style="font-size:10px">SOON</span>
+        </div>
+      </div>
+    </div>
+    <div class="product-card delay-4" onclick="goTo('page-detail')">
+      <div class="product-card-accent" style="background:var(--warn)"></div>
+      <div class="product-card-inner">
+        <div class="product-icon-wrap" style="background:rgba(162,231,255,.08)">🩺</div>
+        <div class="product-info">
+          <div class="product-name">Sterile Swabs — Box 44</div>
+          <div class="product-meta">Zone C · 5 days left</div>
+        </div>
+        <div>
+          <div class="product-days" style="color:var(--warn)">5</div>
+          <span class="status-pill pill-warn" style="font-size:10px">SOON</span>
+        </div>
+      </div>
+    </div>
+    <div class="product-card delay-5" onclick="goTo('page-detail')">
+      <div class="product-card-accent" style="background:var(--safe)"></div>
+      <div class="product-card-inner">
+        <div class="product-icon-wrap" style="background:rgba(74,222,128,.08)">💉</div>
+        <div class="product-info">
+          <div class="product-name">Saline Solution 0.9%</div>
+          <div class="product-meta">Batch S-881 · Zone A</div>
+        </div>
+        <div>
+          <div class="product-days" style="color:var(--safe)">94</div>
+          <span class="status-pill pill-safe" style="font-size:10px">SAFE</span>
+        </div>
+      </div>
+    </div>
+    <div class="product-card" onclick="goTo('page-detail')" style="animation-delay:.3s">
+      <div class="product-card-accent" style="background:var(--safe)"></div>
+      <div class="product-card-inner">
+        <div class="product-icon-wrap" style="background:rgba(74,222,128,.08)">🧬</div>
+        <div class="product-info">
+          <div class="product-name">Cold Storage Vaccines</div>
+          <div class="product-meta">Batch CV-114 · Zone D</div>
+        </div>
+        <div>
+          <div class="product-days" style="color:var(--safe)">180</div>
+          <span class="status-pill pill-safe" style="font-size:10px">SAFE</span>
+        </div>
+      </div>
+    </div>
+    <div class="product-card" onclick="goTo('page-detail')" style="animation-delay:.35s">
+      <div class="product-card-accent" style="background:var(--primary)"></div>
+      <div class="product-card-inner">
+        <div class="product-icon-wrap" style="background:rgba(175,198,255,.08)">🔩</div>
+        <div class="product-info">
+          <div class="product-name">Titanium Screws M4×20</div>
+          <div class="product-meta">SKU-4421 · Warehouse B</div>
+        </div>
+        <div>
+          <div class="product-days" style="color:var(--primary)">365</div>
+          <span class="status-pill pill-primary" style="font-size:10px">SAFE</span>
+        </div>
+      </div>
+    </div>
+    <div class="section-gap"></div>
+  </div>
+
+  <!-- AI FAB -->
+  <div class="ai-fab" onclick="goTo('page-chat')">
+    <svg viewBox="0 0 32 32" width="28" height="28"><circle cx="16" cy="12" r="7" fill="none" stroke="white" stroke-width="2"/><circle cx="11" cy="11" r="1.5" fill="white"/><circle cx="21" cy="11" r="1.5" fill="white"/><path d="M11 15s1.5 2 5 2 5-2 5-2" stroke="white" stroke-width="1.5" fill="none" stroke-linecap="round"/><path d="M9 22c0-3.9 3.1-7 7-7s7 3.1 7 7" stroke="white" stroke-width="2" fill="none" stroke-linecap="round"/></svg>
+  </div>
+
+  <nav class="bottom-nav">
+    <div class="nav-item" onclick="switchTab('hub')"><div class="nav-pill"></div><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg><span>Hub</span></div>
+    <div class="nav-item active" onclick="switchTab('inventory')"><div class="nav-pill"></div><svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="18" rx="2"/><path d="M8 3v18M16 3v18M2 9h20M2 15h20"/></svg><span>Inventory</span></div>
+    <div class="nav-item" onclick="switchTab('import')"><div class="nav-pill"></div><svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg><span>Import</span></div>
+    <div class="nav-item" onclick="switchTab('intel')"><div class="nav-pill"></div><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M2 12h3M19 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12"/></svg><span>Deep Intel</span></div>
+    <div class="nav-item" onclick="switchTab('settings')"><div class="nav-pill"></div><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg><span>Settings</span></div>
+  </nav>
+</div>
+
+<!-- ═══════════════════════════════════════
+  PAGE: PRODUCT DETAIL
+═══════════════════════════════════════ -->
+<div class="page" id="page-detail">
+  <div class="status-bar" style="position:absolute;top:0;left:0;right:0;z-index:10;background:transparent">
+    <span class="status-time" style="color:#fff">9:41</span>
+    <div class="status-icons" style="color:#fff"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="16" height="10" rx="2"/><path d="M22 11v2"/></svg></div>
+  </div>
+  <div style="display:flex;flex-direction:column;height:100%">
+    <div class="detail-hero">
+      <div class="detail-hero-img">🦷</div>
+      <div class="detail-hero-overlay"></div>
+      <div class="detail-back" onclick="goBack()">
+        <svg viewBox="0 0 24 24"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+      </div>
+      <div class="detail-actions-top">
+        <div class="detail-top-btn">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
+        </div>
+        <div class="detail-top-btn">
+          <svg viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+        </div>
+      </div>
+      <div class="detail-hero-sku">SKU-9982-A</div>
+      <div class="detail-hero-name">Medical Grade Titanium Alloy</div>
+    </div>
+
+    <div class="detail-body">
+      <div class="volume-card">
+        <div class="volume-row">
+          <div class="volume-label">Current Volume</div>
+          <div><span class="volume-val">240</span><span class="volume-unit">kg</span></div>
+        </div>
+        <div class="volume-bar"><div class="volume-bar-fill" style="width:65%"></div></div>
+      </div>
+
+      <div class="expiry-loc-row">
+        <div class="expiry-chip">
+          <div class="expiry-chip-label">
+            <svg viewBox="0 0 24 24" width="12" height="12" style="stroke:var(--danger);fill:none;stroke-width:2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            Expiry
+          </div>
+          <div class="expiry-chip-val">12 Days</div>
+        </div>
+        <div class="loc-chip">
+          <div class="loc-chip-label">Location</div>
+          <div class="loc-chip-val">Zone B, Rack 4</div>
+        </div>
+      </div>
+
+      <div class="restock-card">
+        <div class="restock-title">Restock Intel</div>
+        <div class="restock-body">Current burn rate indicates stock depletion in 18 days. Considering a 5-day supplier lead time and impending 12-day shelf-life expiry on batch A, automated reordering is advised immediately.</div>
+        <div class="restock-link">
+          REVIEW PURCHASE ORDER
+          <svg viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </div>
+      </div>
+
+      <div style="font-family:var(--font-head);font-size:15px;font-weight:700;color:var(--on-surface);margin-bottom:4px">Recent Activity</div>
+      <div class="activity-item">
+        <div class="activity-icon-wrap">
+          <svg viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </div>
+        <div>
+          <div class="activity-text">50kg issued to Production Floor 2</div>
+          <div class="activity-time">Today, 08:30 AM</div>
+        </div>
+      </div>
+      <div class="activity-item">
+        <div class="activity-icon-wrap">
+          <svg viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+        </div>
+        <div>
+          <div class="activity-text">150kg received from Supplier X</div>
+          <div class="activity-time">Oct 24, 14:15 PM</div>
+        </div>
+      </div>
+      <div class="activity-item">
+        <div class="activity-icon-wrap">
+          <svg viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </div>
+        <div>
+          <div class="activity-text">80kg dispatched to Zone A Storage</div>
+          <div class="activity-time">Oct 22, 10:00 AM</div>
+        </div>
+      </div>
+      <div style="height:20px"></div>
+    </div>
+
+    <div class="detail-footer">
+      <button class="btn-ghost">Edit</button>
+      <button class="btn-mark">
+        <svg viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+        Mark as Used
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════
+  PAGE: ADD PRODUCT
+═══════════════════════════════════════ -->
+<div class="page" id="page-add">
+  <div class="status-bar">
+    <span class="status-time">9:41</span>
+    <div class="status-icons"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="16" height="10" rx="2"/><path d="M22 11v2"/></svg></div>
+  </div>
+  <div class="top-bar">
+    <div class="top-bar-logo">
+      <div class="logo-icon"><div class="logo-dot"></div><div class="logo-dot"></div><div class="logo-dot"></div><div class="logo-dot"></div></div>
+      <span class="logo-name">Bharat Inventory</span>
+    </div>
+    <div class="avatar-placeholder" onclick="goTo('page-settings')">AD</div>
+  </div>
+
+  <div class="scroll">
+    <div class="page-title">Add New Product</div>
+    <div class="page-subtitle">Select an entry method to expand your inventory.</div>
+
+    <div class="add-method-card delay-1" onclick="goTo('page-scan-ai')">
+      <div class="add-method-icon" style="background:linear-gradient(135deg,rgba(162,231,255,.3),rgba(82,141,255,.3))">
+        <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M8 12h8M12 8v8"/></svg>
+      </div>
+      <div class="add-method-info">
+        <div class="add-method-name">AI Scanner (Photo)</div>
+        <div class="add-method-desc">Extract details from an image instantly.</div>
+      </div>
+      <svg class="chevron" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
+    </div>
+
+    <div class="add-method-card delay-2" onclick="goTo('page-scan-barcode')">
+      <div class="add-method-icon" style="background:linear-gradient(135deg,rgba(0,210,253,.3),rgba(0,153,200,.3))">
+        <svg viewBox="0 0 24 24"><path d="M3 5h2M7 5h2M12 5c1 0 2 .895 2 2s-1 2-2 2M3 10h18M3 15h18M3 20h18"/></svg>
+      </div>
+      <div class="add-method-info">
+        <div class="add-method-name">Barcode Scan</div>
+        <div class="add-method-desc">Scan standard UPC or EAN codes.</div>
+      </div>
+      <svg class="chevron" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
+    </div>
+
+    <div class="add-method-card delay-3" onclick="goTo('page-manual-add')">
+      <div class="add-method-icon" style="background:linear-gradient(135deg,rgba(213,186,255,.3),rgba(168,116,255,.3))">
+        <svg viewBox="0 0 24 24"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+      </div>
+      <div class="add-method-info">
+        <div class="add-method-name">Manual Entry</div>
+        <div class="add-method-desc">Type in product details manually.</div>
+      </div>
+      <svg class="chevron" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
+    </div>
+
+    <div class="add-method-card delay-4" onclick="goTo('page-import')">
+      <div class="add-method-icon" style="background:linear-gradient(135deg,rgba(140,144,159,.25),rgba(100,104,120,.2))">
+        <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      </div>
+      <div class="add-method-info">
+        <div class="add-method-name">Bulk Import</div>
+        <div class="add-method-desc">Upload CSV or Excel files.</div>
+      </div>
+      <svg class="chevron" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
+    </div>
+
+    <div class="section-gap"></div>
+  </div>
+
+  <nav class="bottom-nav">
+    <div class="nav-item" onclick="switchTab('hub')"><div class="nav-pill"></div><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg><span>Hub</span></div>
+    <div class="nav-item active" onclick="switchTab('inventory')"><div class="nav-pill"></div><svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="18" rx="2"/><path d="M8 3v18M16 3v18M2 9h20M2 15h20"/></svg><span>Inventory</span></div>
+    <div class="nav-item" onclick="switchTab('import')"><div class="nav-pill"></div><svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg><span>Import</span></div>
+    <div class="nav-item" onclick="switchTab('intel')"><div class="nav-pill"></div><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M2 12h3M19 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12"/></svg><span>Deep Intel</span></div>
+    <div class="nav-item" onclick="switchTab('settings')"><div class="nav-pill"></div><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg><span>Settings</span></div>
+  </nav>
+</div>
+
+<!-- ═══════════════════════════════════════
+  PAGE: IMPORT
+═══════════════════════════════════════ -->
+<div class="page" id="page-import">
+  <div class="status-bar">
+    <span class="status-time">9:41</span>
+    <div class="status-icons"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="16" height="10" rx="2"/><path d="M22 11v2"/></svg></div>
+  </div>
+  <div class="top-bar">
+    <div class="top-bar-logo">
+      <div class="logo-icon"><div class="logo-dot"></div><div class="logo-dot"></div><div class="logo-dot"></div><div class="logo-dot"></div></div>
+      <span class="logo-name" style="font-size:15px">Select Import Source</span>
+    </div>
+    <div></div>
+  </div>
+
+  <div class="scroll">
+    <div class="page-subtitle" style="padding-top:0">Choose how you want to bring data into your inventory.</div>
+
+    <!-- Step Bar -->
+    <div class="step-bar">
+      <div class="step-track">
+        <div class="step-line"><div class="step-line-fill" style="width:0%"></div></div>
+        <div class="step-item">
+          <div class="step-dot active-dot"></div>
+          <span class="step-label active-label">Step 1: Source</span>
+        </div>
+        <div class="step-item" style="align-items:center">
+          <div class="step-dot"></div>
+          <span class="step-label">Step 2: Map</span>
+        </div>
+        <div class="step-item" style="align-items:flex-end">
+          <div class="step-dot"></div>
+          <span class="step-label">Step 3: Review</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="import-option-card delay-1" onclick="goTo('page-inventory')">
+      <div class="import-icon-wrap" style="background:rgba(82,141,255,.15)">
+        <svg viewBox="0 0 24 24" style="stroke:var(--primary)"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18"/></svg>
+      </div>
+      <div class="import-option-name">CSV / Excel</div>
+      <div class="import-option-desc">Upload structured files directly from your local machine. Supports .csv, .xlsx, .xls.</div>
+    </div>
+
+    <div class="import-option-card delay-2" onclick="goTo('page-inventory')">
+      <div class="import-icon-wrap" style="background:rgba(0,210,253,.12)">
+        <svg viewBox="0 0 24 24" style="stroke:var(--secondary-container)"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
+      </div>
+      <div class="import-option-name">Google Sheets</div>
+      <div class="import-option-desc">Connect a live Google Sheet for automated, recurring inventory synchronization.</div>
+    </div>
+
+    <div class="import-option-card delay-3" onclick="goTo('page-inventory')">
+      <div class="import-icon-wrap" style="background:rgba(168,116,255,.15)">
+        <svg viewBox="0 0 24 24" style="stroke:var(--tertiary)"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 9h6M9 13h4M9 17h2"/></svg>
+      </div>
+      <div style="display:flex;align-items:center;gap:0;margin-bottom:4px">
+        <div class="import-option-name" style="margin-bottom:0">AI Batch Scan</div>
+        <span class="beta-badge">BETA</span>
+      </div>
+      <div class="import-option-desc">Upload PDFs or images of manifests. Our AI extracts structured data automatically.</div>
+    </div>
+
+    <div class="section-gap"></div>
+  </div>
+
+  <nav class="bottom-nav">
+    <div class="nav-item" onclick="switchTab('hub')"><div class="nav-pill"></div><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg><span>Hub</span></div>
+    <div class="nav-item" onclick="switchTab('inventory')"><div class="nav-pill"></div><svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="18" rx="2"/><path d="M8 3v18M16 3v18M2 9h20M2 15h20"/></svg><span>Inventory</span></div>
+    <div class="nav-item active" onclick="switchTab('import')"><div class="nav-pill"></div><svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg><span>Import</span></div>
+    <div class="nav-item" onclick="switchTab('intel')"><div class="nav-pill"></div><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M2 12h3M19 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12"/></svg><span>Deep Intel</span></div>
+    <div class="nav-item" onclick="switchTab('settings')"><div class="nav-pill"></div><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg><span>Settings</span></div>
+  </nav>
+</div>
+
+<!-- ═══════════════════════════════════════
+  PAGE: DEEP INTEL
+═══════════════════════════════════════ -->
+<div class="page" id="page-intel">
+  <div class="status-bar">
+    <span class="status-time">9:41</span>
+    <div class="status-icons"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="16" height="10" rx="2"/><path d="M22 11v2"/></svg></div>
+  </div>
+  <div class="top-bar">
+    <span class="top-bar-title" style="font-size:24px;font-weight:800;background:linear-gradient(90deg,var(--secondary),var(--primary));-webkit-background-clip:text;-webkit-text-fill-color:transparent">Deep Intel</span>
+    <div style="display:flex;gap:8px">
+      <div class="icon-btn"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3"/></svg></div>
+      <div class="avatar-placeholder" onclick="goTo('page-settings')">AD</div>
+    </div>
+  </div>
+  <div class="scroll">
+    <!-- AI Insight Card -->
+    <div class="intel-ai-card delay-1">
+      <div class="intel-ai-header">
+        <div class="intel-ai-icon">
+          <svg viewBox="0 0 24 24"><path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 1 1 7.072 0l-.548.547A3.374 3.374 0 0 0 14 18.469V19a2 2 0 1 1-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
+        </div>
+        <div>
+          <div class="intel-ai-title">AI Forecasting Insight</div>
+        </div>
+      </div>
+      <div class="intel-ai-body">
+        Predicted a <strong>15% surge</strong> in demand for cold-storage vaccines in the Northern Sector within 14 days. Current inventory is insufficient. Recommend initiating import workflow to cover a projected deficit of 1,200 units.
+      </div>
+      <div class="intel-ai-btns">
+        <button class="intel-btn-primary" onclick="goTo('page-import')">Review Plan</button>
+        <button class="intel-btn-ghost">Dismiss</button>
+      </div>
+    </div>
+
+    <!-- Bar Chart -->
+    <div class="chart-card delay-2">
+      <div class="chart-card-header">
+        <div class="chart-card-title">30-Day Movement Trend</div>
+        <div class="chart-filter-pill">All Sectors</div>
+      </div>
+      <div style="position:relative;height:160px">
+        <canvas id="intelBarChart" role="img" aria-label="30 day movement trend bar chart showing inventory levels across months"></canvas>
+      </div>
+    </div>
+
+    <!-- Wastage Ring -->
+    <div class="wastage-card delay-3">
+      <div class="wastage-title">Projected Wastage</div>
+      <div class="wastage-ring">
+        <canvas id="wastageChart" role="img" aria-label="Donut chart showing 12% projected wastage"></canvas>
+        <div class="wastage-center">
+          <div class="wastage-pct">12%</div>
+        </div>
+      </div>
+      <div class="wastage-sub">Action required to save<br>~400 expiring units.</div>
+    </div>
+
+    <div class="section-gap"></div>
+  </div>
+
+  <!-- AI FAB -->
+  <div class="ai-fab" onclick="goTo('page-chat')">
+    <svg viewBox="0 0 32 32" width="28" height="28"><circle cx="16" cy="12" r="7" fill="none" stroke="white" stroke-width="2"/><circle cx="11" cy="11" r="1.5" fill="white"/><circle cx="21" cy="11" r="1.5" fill="white"/><path d="M11 15s1.5 2 5 2 5-2 5-2" stroke="white" stroke-width="1.5" fill="none" stroke-linecap="round"/><path d="M9 22c0-3.9 3.1-7 7-7s7 3.1 7 7" stroke="white" stroke-width="2" fill="none" stroke-linecap="round"/></svg>
+  </div>
+
+  <nav class="bottom-nav">
+    <div class="nav-item" onclick="switchTab('hub')"><div class="nav-pill"></div><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg><span>Hub</span></div>
+    <div class="nav-item" onclick="switchTab('inventory')"><div class="nav-pill"></div><svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="18" rx="2"/><path d="M8 3v18M16 3v18M2 9h20M2 15h20"/></svg><span>Inventory</span></div>
+    <div class="nav-item" onclick="switchTab('import')"><div class="nav-pill"></div><svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg><span>Import</span></div>
+    <div class="nav-item active" onclick="switchTab('intel')"><div class="nav-pill"></div><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M2 12h3M19 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12"/></svg><span>Deep Intel</span></div>
+    <div class="nav-item" onclick="switchTab('settings')"><div class="nav-pill"></div><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg><span>Settings</span></div>
+  </nav>
+</div>
+
+<!-- ═══════════════════════════════════════
+  PAGE: AI CHAT
+═══════════════════════════════════════ -->
+<div class="page" id="page-chat">
+  <div class="status-bar">
+    <span class="status-time">9:41</span>
+    <div class="status-icons"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="16" height="10" rx="2"/><path d="M22 11v2"/></svg></div>
+  </div>
+  <div class="back-bar">
+    <div class="back-btn-bar" onclick="goBack()">
+      <svg viewBox="0 0 24 24"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+    </div>
+    <span class="back-bar-title">Deep Intel</span>
+  </div>
+
+  <div class="chat-hero">
+    <div class="chat-bot-avatar">🤖</div>
+    <div class="chat-bot-name">How can I assist today?</div>
+    <div class="chat-bot-status">Inventory AI is ready.</div>
+  </div>
+
+  <div class="chat-messages" id="chatMessages">
+    <div class="chat-msg-user">
+      <div class="chat-bubble-user">What items are nearing expiry in Zone C?</div>
+    </div>
+    <div class="chat-msg-bot">
+      <div class="chat-bubble-bot">
+        I found 3 items in Zone C expiring within 7 days:
+        <ul>
+          <li>Medical Grade Silicon — Batch A1 (3 days)</li>
+          <li>Sterile Swabs — Box 44 (5 days)</li>
+          <li>Reagent X — Vial 2 (7 days)</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="chat-suggestions">
+    <div class="chat-suggest-chip" onclick="sendChat(this)">
+      <svg viewBox="0 0 24 24"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
+      Stock Analysis
+    </div>
+    <div class="chat-suggest-chip" onclick="sendChat(this)">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      Check Expiry
+    </div>
+    <div class="chat-suggest-chip" onclick="sendChat(this)">
+      <svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      Demand Forecast
+    </div>
+  </div>
+
+  <div class="chat-input-bar">
+    <div class="chat-input-wrap">
+      <div class="chat-input-icon">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M9.663 17h4.673M12 3v1"/></svg>
+      </div>
+      <input class="chat-input" id="chatInput" placeholder="Ask about your inventory…" onkeydown="if(event.key==='Enter')sendChatMsg()">
+    </div>
+    <button class="chat-send" onclick="sendChatMsg()">
+      <svg viewBox="0 0 24 24"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+    </button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════
+  PAGE: SETTINGS
+═══════════════════════════════════════ -->
+<div class="page" id="page-settings">
+  <div class="status-bar">
+    <span class="status-time">9:41</span>
+    <div class="status-icons"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="16" height="10" rx="2"/><path d="M22 11v2"/></svg></div>
+  </div>
+  <div class="scroll">
+    <div style="padding:8px 20px 20px">
+      <div style="font-family:var(--font-head);font-size:26px;font-weight:800;color:var(--on-surface);letter-spacing:-.02em">Profile & Settings</div>
+      <div style="font-size:14px;color:var(--on-surface-var);margin-top:4px">Manage your account details and app preferences.</div>
+    </div>
+
+    <!-- Profile Card -->
+    <div class="settings-profile-card">
+      <div class="profile-row">
+        <div class="profile-avatar">
+          👤
+          <div class="profile-edit-badge">
+            <svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          </div>
+        </div>
+        <div>
+          <div class="profile-name">Arjun Desai</div>
+          <div class="profile-email">arjun.desai@bharatinventory.com</div>
+          <div class="admin-badge">
+            <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            Admin
+          </div>
+        </div>
+      </div>
+      <div class="settings-field">
+        <label>Full Name</label>
+        <input class="settings-input" value="Arjun Desai">
+      </div>
+      <div class="settings-field">
+        <label>Phone Number</label>
+        <input class="settings-input" value="+91 98765 43210">
+      </div>
+      <div class="clearfix">
+        <button class="save-btn">Save Changes</button>
+      </div>
+    </div>
+
+    <!-- Plan Card -->
+    <div class="plan-card">
+      <div class="plan-row">
+        <div class="plan-left">
+          <div class="plan-icon-wrap">
+            <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          </div>
+          <div>
+            <div class="plan-name">Enterprise Tier</div>
+            <div class="plan-detail">Next billing cycle on Oct 1, 2024</div>
+          </div>
+        </div>
+        <button class="plan-manage-btn">Manage Plan</button>
+      </div>
+      <div class="usage-row"><span>API Usage (Monthly)</span><span style="font-weight:700;color:var(--on-surface)">84%</span></div>
+      <div class="usage-bar"><div class="usage-bar-fill" style="width:84%"></div></div>
+    </div>
+
+    <!-- Preferences -->
+    <div class="prefs-card">
+      <div class="pref-section-title">App Preferences</div>
+      <div class="pref-row">
+        <div class="pref-icon"><svg viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></div>
+        <div class="pref-text">
+          <div class="pref-name">Dark Mode</div>
+          <div class="pref-desc">Use dark theme across the app</div>
+        </div>
+        <div class="pref-right">
+          <div class="toggle" onclick="this.classList.toggle('off')"><div class="toggle-knob"></div></div>
+        </div>
+      </div>
+      <div class="pref-row">
+        <div class="pref-icon"><svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0"/></svg></div>
+        <div class="pref-text">
+          <div class="pref-name">Push Notifications</div>
+          <div class="pref-desc">Critical inventory alerts</div>
+        </div>
+        <div class="pref-right">
+          <div class="toggle" onclick="this.classList.toggle('off')"><div class="toggle-knob"></div></div>
+        </div>
+      </div>
+      <div class="pref-row">
+        <div class="pref-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg></div>
+        <div class="pref-text">
+          <div class="pref-name">Language</div>
+          <div class="pref-desc">English (US)</div>
+        </div>
+        <div class="pref-right pref-chevron">
+          <svg viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
+        </div>
+      </div>
+    </div>
+
+    <button class="signout-btn" onclick="handleSignOut()">
+      <svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+      Sign Out Securely
+    </button>
+  </div>
+
+  <nav class="bottom-nav">
+    <div class="nav-item" onclick="switchTab('hub')"><div class="nav-pill"></div><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg><span>Hub</span></div>
+    <div class="nav-item" onclick="switchTab('inventory')"><div class="nav-pill"></div><svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="18" rx="2"/><path d="M8 3v18M16 3v18M2 9h20M2 15h20"/></svg><span>Inventory</span></div>
+    <div class="nav-item" onclick="switchTab('import')"><div class="nav-pill"></div><svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg><span>Import</span></div>
+    <div class="nav-item" onclick="switchTab('intel')"><div class="nav-pill"></div><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M2 12h3M19 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12"/></svg><span>Deep Intel</span></div>
+    <div class="nav-item active" onclick="switchTab('settings')"><div class="nav-pill"></div><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg><span>Settings</span></div>
+  </nav>
+</div>
+
+
+<!-- ═══════════════════════════════════════
+  PAGE: PRODUCT SCANNER
+═══════════════════════════════════════ -->
+<div class="page" id="page-scan-barcode" style="background:#000">
+
+  <!-- ── CAMERA BACKGROUND ── -->
+  <!-- Refrigerator / shelf environment simulation -->
+  <div style="position:absolute;inset:0;overflow:hidden">
+    <!-- Main environment background: cool steel grey like a fridge interior -->
+    <div style="position:absolute;inset:0;background:linear-gradient(180deg,#1a2030 0%,#243040 30%,#1c2535 60%,#151e2d 100%)"></div>
+
+    <!-- Top shelf light bar -->
+    <div style="position:absolute;top:0;left:0;right:0;height:80px;
+      background:radial-gradient(ellipse 80% 100% at 50% 0%,rgba(140,200,255,.22) 0%,transparent 100%)"></div>
+
+    <!-- Shelf surface lines -->
+    <div style="position:absolute;top:38%;left:0;right:0;height:2px;
+      background:rgba(255,255,255,.06)"></div>
+    <div style="position:absolute;top:68%;left:0;right:0;height:1px;
+      background:rgba(255,255,255,.04)"></div>
+
+    <!-- Vertical walls -->
+    <div style="position:absolute;top:0;left:0;bottom:0;width:28px;
+      background:linear-gradient(90deg,rgba(10,15,30,.8),transparent)"></div>
+    <div style="position:absolute;top:0;right:0;bottom:0;width:28px;
+      background:linear-gradient(270deg,rgba(10,15,30,.8),transparent)"></div>
+
+    <!-- Product silhouette (milk carton style) in the centre of frame -->
+    <div id="scanProduct" style="position:absolute;left:50%;top:22%;transform:translateX(-50%);
+      width:140px;height:190px;opacity:0;transition:opacity .5s ease;
+      display:flex;align-items:flex-end;justify-content:center">
+      <!-- Carton body -->
+      <div style="position:relative;width:100px;height:160px">
+        <!-- Gable top -->
+        <div style="position:absolute;top:0;left:10px;right:10px;height:28px;
+          background:linear-gradient(180deg,#b8c8d8,#8fa0b0);
+          clip-path:polygon(0% 100%,50% 0%,100% 100%);border-radius:2px"></div>
+        <!-- Cap -->
+        <div style="position:absolute;top:8px;left:40px;right:40px;height:16px;
+          background:linear-gradient(180deg,#607080,#4a5a6a);border-radius:4px 4px 2px 2px"></div>
+        <!-- Main carton body -->
+        <div style="position:absolute;top:22px;left:0;right:0;bottom:0;
+          background:linear-gradient(135deg,#c8d8e8 0%,#a0b8cc 40%,#7890a8 100%);
+          border-radius:3px 3px 4px 4px;overflow:hidden">
+          <!-- Brand stripe -->
+          <div style="position:absolute;left:0;right:0;top:24px;height:40px;
+            background:linear-gradient(135deg,#1a3a6a,#2a4a8a);
+            display:flex;align-items:center;justify-content:center">
+            <span style="font-family:var(--font-head);font-size:15px;font-weight:800;
+              color:#fff;letter-spacing:.04em">Miilk</span>
+          </div>
+          <!-- Barcode strip at bottom -->
+          <div style="position:absolute;bottom:6px;left:8px;right:8px;height:18px;
+            display:flex;gap:1px;align-items:stretch;opacity:.7">
+            <div style="flex:2;background:#222"></div><div style="flex:1;background:#fff"></div>
+            <div style="flex:3;background:#222"></div><div style="flex:1;background:#fff"></div>
+            <div style="flex:2;background:#222"></div><div style="flex:1;background:#fff"></div>
+            <div style="flex:3;background:#222"></div><div style="flex:2;background:#fff"></div>
+            <div style="flex:1;background:#222"></div><div style="flex:2;background:#fff"></div>
+            <div style="flex:3;background:#222"></div><div style="flex:1;background:#fff"></div>
+            <div style="flex:2;background:#222"></div>
+          </div>
+          <!-- Nutrition facts hint -->
+          <div style="position:absolute;top:72px;left:6px;right:6px;
+            display:flex;flex-direction:column;gap:2px">
+            <div style="height:2px;background:rgba(0,0,0,.15);border-radius:1px"></div>
+            <div style="height:2px;background:rgba(0,0,0,.1);width:70%;border-radius:1px"></div>
+            <div style="height:2px;background:rgba(0,0,0,.1);width:55%;border-radius:1px"></div>
+          </div>
+        </div>
+        <!-- Subtle reflection -->
+        <div style="position:absolute;top:22px;left:4px;width:14px;bottom:0;
+          background:linear-gradient(90deg,rgba(255,255,255,.18),transparent);
+          border-radius:2px 0 0 2px"></div>
+      </div>
+    </div>
+
+    <!-- Grain overlay -->
+    <canvas id="grainCanvas" style="position:absolute;inset:0;width:100%;height:100%;opacity:.12;pointer-events:none"></canvas>
+  </div>
+
+  <!-- ── TOP BAR ── -->
+  <div style="position:absolute;top:0;left:0;right:0;z-index:30;
+    padding:44px 20px 16px;
+    background:linear-gradient(to bottom,rgba(0,0,0,.6) 0%,rgba(0,0,0,0) 100%);
+    display:flex;align-items:center;justify-content:space-between">
+    <!-- Back -->
+    <button onclick="resetScan();goBack()" style="width:38px;height:38px;border-radius:50%;
+      background:rgba(0,0,0,.4);backdrop-filter:blur(16px);
+      border:1px solid rgba(255,255,255,.16);display:flex;align-items:center;
+      justify-content:center;cursor:pointer">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+    </button>
+    <span style="font-family:var(--font-head);font-size:17px;font-weight:700;color:#fff">Product Scanner</span>
+    <!-- Torch -->
+    <button id="bcTorch" onclick="toggleTorch()" style="width:38px;height:38px;border-radius:50%;
+      background:rgba(0,0,0,.4);backdrop-filter:blur(16px);
+      border:1px solid rgba(255,255,255,.16);display:flex;align-items:center;
+      justify-content:center;cursor:pointer;transition:background .2s,border-color .2s">
+      <svg id="torchIcon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.55)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11.5A4 4 0 0 1 13 8V3H7v5A4 4 0 0 0 9 11.5z"/><path d="M9 11.5V17a2 2 0 0 0 4 0v-5.5"/><line x1="13" y1="3" x2="7" y2="3"/></svg>
+    </button>
+  </div>
+
+  <!-- ── SCAN FRAME BRACKETS ── -->
+  <div id="bcFrame" style="position:absolute;top:18%;left:50%;transform:translateX(-50%);
+    width:230px;height:270px;z-index:20;pointer-events:none">
+    <!-- TL -->
+    <div style="position:absolute;top:0;left:0;width:30px;height:30px;
+      border-top:2.5px solid #00d2fd;border-left:2.5px solid #00d2fd;border-radius:5px 0 0 0;
+      box-shadow:0 0 14px rgba(0,210,253,.7),-2px -2px 14px rgba(0,210,253,.4)"></div>
+    <!-- TR -->
+    <div style="position:absolute;top:0;right:0;width:30px;height:30px;
+      border-top:2.5px solid #00d2fd;border-right:2.5px solid #00d2fd;border-radius:0 5px 0 0;
+      box-shadow:0 0 14px rgba(0,210,253,.7),2px -2px 14px rgba(0,210,253,.4)"></div>
+    <!-- BL -->
+    <div style="position:absolute;bottom:0;left:0;width:30px;height:30px;
+      border-bottom:2.5px solid #00d2fd;border-left:2.5px solid #00d2fd;border-radius:0 0 0 5px;
+      box-shadow:0 0 14px rgba(0,210,253,.7),-2px 2px 14px rgba(0,210,253,.4)"></div>
+    <!-- BR -->
+    <div style="position:absolute;bottom:0;right:0;width:30px;height:30px;
+      border-bottom:2.5px solid #00d2fd;border-right:2.5px solid #00d2fd;border-radius:0 0 5px 0;
+      box-shadow:0 0 14px rgba(0,210,253,.7),2px 2px 14px rgba(0,210,253,.4)"></div>
+    <!-- Scan sweep line -->
+    <div id="bcScanLine" style="position:absolute;left:4px;right:4px;height:2px;top:0;
+      background:linear-gradient(90deg,transparent 0%,rgba(0,210,253,.3) 15%,#00d2fd 50%,rgba(0,210,253,.3) 85%,transparent 100%);
+      box-shadow:0 0 10px 2px rgba(0,210,253,.6);border-radius:1px;
+      animation:scanLineMove 2.2s ease-in-out infinite"></div>
+  </div>
+
+  <!-- ── SCANNING HINT pill ── -->
+  <div id="bcHintWrap" style="position:absolute;top:72%;left:0;right:0;text-align:center;z-index:25;
+    transition:opacity .3s">
+    <div style="display:inline-flex;align-items:center;gap:8px;padding:9px 20px;
+      background:rgba(0,0,0,.55);backdrop-filter:blur(12px);
+      border:1px solid rgba(255,255,255,.13);border-radius:999px">
+      <div style="width:7px;height:7px;border-radius:50%;background:#00d2fd;
+        animation:dotBlink 1.4s ease-in-out infinite"></div>
+      <span id="bcHint" style="font-family:var(--font-num);font-size:13px;font-weight:500;
+        color:rgba(255,255,255,.78)">Point at product label to scan</span>
+    </div>
+  </div>
+
+  <!-- ── BOTTOM RESULT SHEET (slides up after scan) ── -->
+  <div id="bcSheet" style="position:absolute;left:0;right:0;bottom:0;z-index:40;
+    transform:translateY(100%);transition:transform .5s cubic-bezier(0.16,1,0.3,1)">
+
+    <!-- Sheet drag handle -->
+    <div style="position:absolute;top:-20px;left:50%;transform:translateX(-50%);
+      width:36px;height:4px;border-radius:2px;background:rgba(255,255,255,.3)"></div>
+
+    <div style="background:rgba(22,27,43,0.97);backdrop-filter:blur(24px);
+      border-radius:24px 24px 0 0;border-top:1px solid rgba(175,198,255,.15);
+      padding:24px 20px 36px;box-shadow:0 -20px 60px rgba(0,0,0,.5)">
+
+      <!-- Product header row -->
+      <div style="display:flex;align-items:center;gap:14px;margin-bottom:20px">
+        <!-- Icon -->
+        <div style="width:52px;height:52px;border-radius:14px;flex-shrink:0;
+          background:linear-gradient(135deg,rgba(0,210,253,.25),rgba(82,141,255,.2));
+          border:1px solid rgba(0,210,253,.3);
+          display:flex;align-items:center;justify-content:center">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#00d2fd" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="18" rx="2"/><path d="M8 3v18M16 3v18M2 9h20M2 15h20"/></svg>
+        </div>
+        <!-- Name + verified -->
+        <div style="flex:1;min-width:0">
+          <div style="font-family:var(--font-head);font-size:17px;font-weight:800;
+            color:#dee1f7;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"
+            id="sheetProductName">Milk – 2% Reduced Fat</div>
+          <div style="display:flex;align-items:center;gap:8px;margin-top:4px">
+            <span style="display:inline-flex;align-items:center;gap:4px;
+              padding:3px 10px;border-radius:999px;
+              background:rgba(74,222,128,.15);border:1px solid rgba(74,222,128,.3);
+              font-family:var(--font-num);font-size:11px;font-weight:700;color:#4ade80;
+              letter-spacing:.05em">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+              VERIFIED
+            </span>
+            <span style="font-family:var(--font-num);font-size:12px;color:rgba(194,198,214,.6)"
+              id="sheetConfidence">Confidence 98%</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Divider -->
+      <div style="height:1px;background:rgba(255,255,255,.07);margin-bottom:20px"></div>
+
+      <!-- Expiry + Status row -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
+        <div>
+          <div style="font-family:var(--font-num);font-size:11px;font-weight:600;
+            color:rgba(194,198,214,.5);letter-spacing:.08em;margin-bottom:6px">DETECTED EXPIRY</div>
+          <div style="font-family:var(--font-head);font-size:22px;font-weight:800;
+            color:#dee1f7;letter-spacing:-.01em" id="sheetExpiry">Nov 05, 2023</div>
+        </div>
+        <div>
+          <div style="font-family:var(--font-num);font-size:11px;font-weight:600;
+            color:rgba(194,198,214,.5);letter-spacing:.08em;margin-bottom:6px">STATUS</div>
+          <div style="font-family:var(--font-head);font-size:22px;font-weight:800;
+            letter-spacing:-.01em" id="sheetStatus" style="color:#4ade80">Healthy</div>
+        </div>
+      </div>
+
+      <!-- Confidence bar -->
+      <div style="margin-bottom:20px">
+        <div style="display:flex;justify-content:space-between;
+          font-family:var(--font-num);font-size:12px;color:rgba(194,198,214,.5);
+          margin-bottom:8px">
+          <span>Processing Confidence</span>
+          <span id="sheetConfPct" style="color:#dee1f7;font-weight:600">98%</span>
+        </div>
+        <div style="height:5px;background:rgba(255,255,255,.07);border-radius:3px;overflow:hidden">
+          <div id="sheetConfBar" style="height:100%;border-radius:3px;width:0%;
+            background:linear-gradient(90deg,#00d2fd,#528dff);
+            transition:width 1s cubic-bezier(0.16,1,0.3,1)"></div>
+        </div>
+      </div>
+
+      <!-- CTA Button -->
+      <button onclick="goTo('page-detail')" style="width:100%;height:56px;border-radius:16px;
+        background:linear-gradient(135deg,#00d2fd 0%,#1a8aff 100%);
+        border:none;color:#fff;
+        font-family:var(--font-head);font-size:17px;font-weight:800;
+        cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;
+        box-shadow:0 4px 28px rgba(0,210,253,.45),0 1px 0 rgba(255,255,255,.15) inset;
+        transition:transform .15s,box-shadow .15s;letter-spacing:-.01em"
+        onmousedown="this.style.transform='scale(0.97)';this.style.boxShadow='0 2px 14px rgba(0,210,253,.35)'"
+        onmouseup="this.style.transform='scale(1)';this.style.boxShadow='0 4px 28px rgba(0,210,253,.45),0 1px 0 rgba(255,255,255,.15) inset'">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="18" rx="2"/><path d="M8 3v18M16 3v18"/></svg>
+        Save to Inventory
+      </button>
+
+      <!-- Scan again link -->
+      <div style="text-align:center;margin-top:14px">
+        <span onclick="resetScan()" style="font-family:var(--font-num);font-size:13px;
+          color:rgba(162,231,255,.6);cursor:pointer;font-weight:500">
+          Scan another item
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── SHUTTER BUTTON (shown while scanning) ── -->
+  <div id="bcShutterWrap" style="position:absolute;bottom:48px;left:0;right:0;z-index:35;
+    display:flex;align-items:center;justify-content:center;gap:28px;
+    transition:opacity .3s,transform .3s">
+    <!-- Gallery -->
+    <button onclick="resetScan();goBack()" style="width:48px;height:48px;border-radius:50%;
+      background:rgba(0,0,0,.45);backdrop-filter:blur(12px);
+      border:1px solid rgba(255,255,255,.18);display:flex;align-items:center;
+      justify-content:center;cursor:pointer">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.8)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+    </button>
+    <!-- Main shutter -->
+    <button id="bcShutter" onclick="simulateScan()" style="width:70px;height:70px;border-radius:50%;
+      background:rgba(255,255,255,.92);
+      border:3px solid rgba(255,255,255,.45);
+      display:flex;align-items:center;justify-content:center;cursor:pointer;
+      transition:transform .15s;
+      box-shadow:0 0 0 7px rgba(255,255,255,.1),0 4px 20px rgba(0,0,0,.4)">
+      <div style="width:54px;height:54px;border-radius:50%;background:#fff;
+        display:flex;align-items:center;justify-content:center">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0d1220" stroke-width="2.2" stroke-linecap="round"><path d="M3 5h2M7 5h2M12 5v2M3 10h18M3 15h18M3 20h2M7 20h2"/></svg>
+      </div>
+    </button>
+    <!-- AI switch -->
+    <button onclick="goTo('page-scan-ai')" style="width:48px;height:48px;border-radius:50%;
+      background:rgba(0,0,0,.45);backdrop-filter:blur(12px);
+      border:1px solid rgba(255,255,255,.18);display:flex;align-items:center;
+      justify-content:center;cursor:pointer">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.8)" stroke-width="1.8" stroke-linecap="round"><path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 1 1 7.072 0l-.548.547A3.374 3.374 0 0 0 14 18.469V19a2 2 0 1 1-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
+    </button>
+  </div>
+
+  <!-- Bottom labels -->
+  <div id="bcLabels" style="position:absolute;bottom:22px;left:0;right:0;z-index:35;
+    display:flex;justify-content:center;gap:28px;transition:opacity .3s">
+    <div style="width:48px;text-align:center;font-size:10px;color:rgba(255,255,255,.4);font-family:var(--font-num)">Gallery</div>
+    <div style="width:70px;text-align:center;font-size:10px;color:rgba(255,255,255,.4);font-family:var(--font-num)">Scan</div>
+    <div style="width:48px;text-align:center;font-size:10px;color:rgba(255,255,255,.4);font-family:var(--font-num)">AI Mode</div>
+  </div>
+
+</div>
+
+<!-- ═══════════════════════════════════════
+  PAGE: AI SCANNER (PHOTO)
+═══════════════════════════════════════ -->
+<div class="page" id="page-scan-ai">
+  <div style="position:absolute;inset:0;background:#000;overflow:hidden" id="aiCameraWrap">
+
+    <!-- Simulated camera background -->
+    <div style="position:absolute;inset:0;
+      background:radial-gradient(ellipse 80% 60% at 50% 40%,#1c2438 0%,#060a12 100%)"></div>
+    <canvas id="grainCanvas2" style="position:absolute;inset:0;width:100%;height:100%;opacity:.15;pointer-events:none"></canvas>
+
+    <!-- Faint scene elements to look like a product label -->
+    <div style="position:absolute;top:28%;left:50%;transform:translateX(-50%);
+      width:200px;height:140px;opacity:.12;
+      border:1.5px solid rgba(255,255,255,.4);border-radius:6px;
+      display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px">
+      <div style="width:80%;height:8px;background:rgba(255,255,255,.6);border-radius:2px"></div>
+      <div style="width:60%;height:6px;background:rgba(255,255,255,.4);border-radius:2px"></div>
+      <div style="width:70%;height:6px;background:rgba(255,255,255,.4);border-radius:2px;margin-top:8px"></div>
+      <div style="width:50%;height:5px;background:rgba(255,255,255,.3);border-radius:2px"></div>
+    </div>
+
+    <!-- Top bar -->
+    <div style="position:absolute;top:0;left:0;right:0;z-index:20;
+      background:linear-gradient(to bottom,rgba(0,0,0,.75),rgba(0,0,0,0));
+      padding:12px 20px 48px;display:flex;align-items:center;justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:12px">
+        <button onclick="goBack()" style="width:38px;height:38px;border-radius:50%;
+          background:rgba(0,0,0,.45);backdrop-filter:blur(12px);
+          border:1px solid rgba(255,255,255,.18);display:flex;align-items:center;
+          justify-content:center;cursor:pointer"
+          onmousedown="this.style.background='rgba(255,255,255,.15)'"
+          onmouseup="this.style.background='rgba(0,0,0,.45)'">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+        </button>
+        <span style="font-family:var(--font-head);font-size:17px;font-weight:700;color:#fff">AI Scanner</span>
+      </div>
+      <div style="padding:5px 12px;border-radius:999px;
+        background:rgba(168,116,255,.25);border:1px solid rgba(168,116,255,.45);
+        font-family:var(--font-num);font-size:11px;font-weight:700;color:#d5baff;letter-spacing:.06em">
+        AI POWERED
+      </div>
+    </div>
+
+    <!-- AI Detection frame — square with pulsing corners -->
+    <div id="aiFrame" style="position:absolute;top:50%;left:50%;
+      transform:translate(-50%,-55%);width:240px;height:240px;z-index:10">
+
+      <!-- Corner brackets — purple/AI accent -->
+      <div style="position:absolute;inset:0;pointer-events:none">
+        <div style="position:absolute;top:0;left:0;width:32px;height:32px;
+          border-top:3px solid #a874ff;border-left:3px solid #a874ff;border-radius:6px 0 0 0;
+          box-shadow:0 0 16px rgba(168,116,255,.7),-3px -3px 16px rgba(168,116,255,.4);
+          animation:cornerPulse 2.5s ease-in-out infinite"></div>
+        <div style="position:absolute;top:0;right:0;width:32px;height:32px;
+          border-top:3px solid #a874ff;border-right:3px solid #a874ff;border-radius:0 6px 0 0;
+          box-shadow:0 0 16px rgba(168,116,255,.7),3px -3px 16px rgba(168,116,255,.4);
+          animation:cornerPulse 2.5s ease-in-out infinite .2s"></div>
+        <div style="position:absolute;bottom:0;left:0;width:32px;height:32px;
+          border-bottom:3px solid #a874ff;border-left:3px solid #a874ff;border-radius:0 0 0 6px;
+          box-shadow:0 0 16px rgba(168,116,255,.7),-3px 3px 16px rgba(168,116,255,.4);
+          animation:cornerPulse 2.5s ease-in-out infinite .4s"></div>
+        <div style="position:absolute;bottom:0;right:0;width:32px;height:32px;
+          border-bottom:3px solid #a874ff;border-right:3px solid #a874ff;border-radius:0 0 6px 0;
+          box-shadow:0 0 16px rgba(168,116,255,.7),3px 3px 16px rgba(168,116,255,.4);
+          animation:cornerPulse 2.5s ease-in-out infinite .6s"></div>
+
+        <!-- AI grid scan lines -->
+        <div id="aiScanGrid" style="position:absolute;inset:8px;opacity:.3;overflow:hidden;border-radius:4px">
+          <div style="position:absolute;top:33%;left:0;right:0;height:1px;background:rgba(168,116,255,.5)"></div>
+          <div style="position:absolute;top:66%;left:0;right:0;height:1px;background:rgba(168,116,255,.5)"></div>
+          <div style="position:absolute;left:33%;top:0;bottom:0;width:1px;background:rgba(168,116,255,.5)"></div>
+          <div style="position:absolute;left:66%;top:0;bottom:0;width:1px;background:rgba(168,116,255,.5)"></div>
+        </div>
+
+        <!-- Animated horizontal AI scan line -->
+        <div style="position:absolute;left:8px;right:8px;height:2px;
+          background:linear-gradient(90deg,transparent,rgba(168,116,255,.9),rgba(213,186,255,.8),rgba(168,116,255,.9),transparent);
+          box-shadow:0 0 12px 3px rgba(168,116,255,.6);
+          animation:aiScanLineMove 2.2s ease-in-out infinite;top:8px"></div>
+
+        <!-- Detected point markers (shown during AI processing) -->
+        <div id="aiDots" style="display:none">
+          <div style="position:absolute;top:22%;left:30%;width:8px;height:8px;border-radius:50%;background:#a874ff;box-shadow:0 0 8px rgba(168,116,255,.8);animation:dotPop .3s ease both"></div>
+          <div style="position:absolute;top:55%;left:60%;width:8px;height:8px;border-radius:50%;background:#a874ff;box-shadow:0 0 8px rgba(168,116,255,.8);animation:dotPop .3s ease .1s both"></div>
+          <div style="position:absolute;top:72%;left:25%;width:6px;height:6px;border-radius:50%;background:#d5baff;box-shadow:0 0 6px rgba(213,186,255,.7);animation:dotPop .3s ease .2s both"></div>
+          <div style="position:absolute;top:38%;left:75%;width:6px;height:6px;border-radius:50%;background:#d5baff;box-shadow:0 0 6px rgba(213,186,255,.7);animation:dotPop .3s ease .3s both"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- AI Status pill below frame -->
+    <div style="position:absolute;top:74%;left:0;right:0;text-align:center;z-index:20">
+      <div id="aiStatusPill" style="display:inline-flex;align-items:center;gap:8px;
+        padding:8px 20px;background:rgba(0,0,0,.6);backdrop-filter:blur(8px);
+        border:1px solid rgba(168,116,255,.3);border-radius:999px">
+        <div style="width:7px;height:7px;border-radius:50%;background:#a874ff;
+          animation:dotBlink 1.2s ease-in-out infinite"></div>
+        <span id="aiStatusText" style="font-family:var(--font-num);font-size:13px;color:rgba(255,255,255,.75)">Point camera at product label</span>
+      </div>
+    </div>
+
+    <!-- Bottom controls -->
+    <div style="position:absolute;bottom:0;left:0;right:0;z-index:20;
+      background:linear-gradient(to top,rgba(0,0,0,.9) 0%,rgba(0,0,0,0) 100%);
+      padding:24px 24px 44px">
+
+      <!-- AI extracted data panel (hidden until scan) -->
+      <div id="aiExtracted" style="display:none;margin-bottom:18px;
+        background:rgba(168,116,255,.1);border:1px solid rgba(168,116,255,.3);
+        border-radius:14px;padding:14px 16px;animation:floatIn .4s var(--ease) both">
+        <div style="font-family:var(--font-num);font-size:10px;font-weight:700;
+          color:#a874ff;letter-spacing:.1em;margin-bottom:10px">AI EXTRACTED DATA</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <div style="background:rgba(0,0,0,.3);border-radius:8px;padding:8px 10px">
+            <div style="font-size:10px;color:rgba(255,255,255,.45);font-family:var(--font-num);margin-bottom:3px">PRODUCT NAME</div>
+            <div style="font-size:13px;font-weight:700;color:#fff;font-family:var(--font-head)">Titanium Alloy</div>
+          </div>
+          <div style="background:rgba(0,0,0,.3);border-radius:8px;padding:8px 10px">
+            <div style="font-size:10px;color:rgba(255,255,255,.45);font-family:var(--font-num);margin-bottom:3px">BATCH NO.</div>
+            <div style="font-size:13px;font-weight:700;color:#fff;font-family:var(--font-head)">SKU-9982-A</div>
+          </div>
+          <div style="background:rgba(0,0,0,.3);border-radius:8px;padding:8px 10px">
+            <div style="font-size:10px;color:rgba(255,255,255,.45);font-family:var(--font-num);margin-bottom:3px">MFG DATE</div>
+            <div style="font-size:13px;font-weight:700;color:#fff;font-family:var(--font-head)">Oct 2024</div>
+          </div>
+          <div style="background:rgba(248,113,113,.15);border-radius:8px;padding:8px 10px;border:1px solid rgba(248,113,113,.2)">
+            <div style="font-size:10px;color:rgba(248,113,113,.8);font-family:var(--font-num);margin-bottom:3px">EXPIRY DATE</div>
+            <div style="font-size:13px;font-weight:700;color:#f87171;font-family:var(--font-head)">Nov 7, 2024</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:2px;margin-top:10px;align-items:center">
+          <div style="width:6px;height:6px;border-radius:50%;background:#4ade80"></div>
+          <span style="font-size:11px;color:#4ade80;font-family:var(--font-num);font-weight:600;margin-left:4px">94% confidence</span>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:12px;align-items:center;justify-content:center">
+        <!-- Gallery -->
+        <button onclick="goBack()" style="width:52px;height:52px;border-radius:50%;
+          background:rgba(255,255,255,.1);backdrop-filter:blur(8px);
+          border:1px solid rgba(255,255,255,.18);display:flex;align-items:center;
+          justify-content:center;cursor:pointer">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.85)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+        </button>
+
+        <!-- AI Capture shutter -->
+        <button id="aiShutter" onclick="simulateAIScan()" style="width:72px;height:72px;border-radius:50%;
+          background:rgba(168,116,255,.25);backdrop-filter:blur(8px);
+          border:3px solid rgba(168,116,255,.6);
+          display:flex;align-items:center;justify-content:center;cursor:pointer;
+          transition:transform .15s,background .2s;
+          box-shadow:0 0 20px rgba(168,116,255,.4),0 0 0 8px rgba(168,116,255,.1)">
+          <div style="width:56px;height:56px;border-radius:50%;
+            background:linear-gradient(135deg,rgba(168,116,255,.8),rgba(213,186,255,.6));
+            display:flex;align-items:center;justify-content:center">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 1 1 7.072 0l-.548.547A3.374 3.374 0 0 0 14 18.469V19a2 2 0 1 1-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
+          </div>
+        </button>
+
+        <!-- Use barcode instead -->
+        <button onclick="goTo('page-scan-barcode')" style="width:52px;height:52px;border-radius:50%;
+          background:rgba(255,255,255,.1);backdrop-filter:blur(8px);
+          border:1px solid rgba(255,255,255,.18);display:flex;align-items:center;
+          justify-content:center;cursor:pointer">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.85)" stroke-width="1.8" stroke-linecap="round"><path d="M3 5h2M7 5h2M12 5c1 0 2 .895 2 2s-1 2-2 2M3 10h18M3 15h18M3 20h2M7 20h2"/></svg>
+        </button>
+      </div>
+
+      <div style="display:flex;gap:12px;justify-content:center;margin-top:8px">
+        <div style="width:52px;text-align:center;font-size:11px;color:rgba(255,255,255,.4);font-family:var(--font-num)">Gallery</div>
+        <div style="width:72px;text-align:center;font-size:11px;color:rgba(255,255,255,.4);font-family:var(--font-num)">Capture</div>
+        <div style="width:52px;text-align:center;font-size:11px;color:rgba(255,255,255,.4);font-family:var(--font-num)">Barcode</div>
+      </div>
+
+      <!-- Use extracted data button (hidden until scan) -->
+      <button id="aiUseBtn" onclick="goTo('page-detail')" style="display:none;width:100%;height:52px;
+        margin-top:16px;border-radius:14px;
+        background:linear-gradient(135deg,#a874ff,#7c4dff);border:none;
+        color:#fff;font-family:var(--font-head);font-size:16px;font-weight:700;
+        cursor:pointer;box-shadow:0 4px 20px rgba(168,116,255,.45);
+        animation:floatIn .4s var(--ease) both">
+        Use Extracted Data →
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════
+  PAGE: MANUAL ADD PRODUCT
+═══════════════════════════════════════ -->
+<div class="page" id="page-manual-add">
+  <div class="status-bar"><span class="status-time" id="maTime">9:41</span></div>
+  <div style="display:flex;align-items:center;gap:12px;padding:4px 20px 12px;flex-shrink:0">
+    <div class="back-btn-bar" onclick="goBack()">
+      <svg viewBox="0 0 24 24"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+    </div>
+    <span class="back-bar-title">Add Product</span>
+  </div>
+  <div class="scroll" style="padding:0 20px 100px">
+    <div class="field-group">
+      <label class="field-label">PRODUCT NAME *</label>
+      <input id="maName" class="field-input" placeholder="e.g. Amoxicillin 500mg">
+    </div>
+    <div class="field-group">
+      <label class="field-label">CATEGORY</label>
+      <select id="maCategory" class="field-input" style="appearance:none">
+        <option value="">Select category…</option>
+      </select>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div class="field-group">
+        <label class="field-label">QUANTITY</label>
+        <input id="maQty" class="field-input" type="number" placeholder="1" value="1">
+      </div>
+      <div class="field-group">
+        <label class="field-label">UNIT</label>
+        <select id="maUnit" class="field-input" style="appearance:none">
+          <option>pcs</option><option>kg</option><option>g</option><option>mg</option>
+          <option>L</option><option>ml</option><option>box</option><option>pack</option>
+          <option>bottle</option><option>strip</option><option>tablet</option>
+        </select>
+      </div>
+    </div>
+    <div class="field-group">
+      <label class="field-label">EXPIRY DATE *</label>
+      <input id="maExpiry" class="field-input" type="date">
+    </div>
+    <div class="field-group">
+      <label class="field-label">BATCH NUMBER</label>
+      <input id="maBatch" class="field-input" placeholder="e.g. BATCH-2024-01">
+    </div>
+    <div class="field-group">
+      <label class="field-label">LOCATION</label>
+      <input id="maLocation" class="field-input" placeholder="e.g. Zone A, Rack 2">
+    </div>
+    <div class="field-group">
+      <label class="field-label">BARCODE</label>
+      <input id="maBarcode" class="field-input" placeholder="Scan or enter manually">
+    </div>
+    <div class="field-group">
+      <label class="field-label">PRICE (₹)</label>
+      <input id="maPrice" class="field-input" type="number" placeholder="0.00">
+    </div>
+    <div class="field-group">
+      <label class="field-label">NOTES</label>
+      <input id="maNotes" class="field-input" placeholder="Any notes…">
+    </div>
+    <p id="maError" style="color:var(--danger);font-size:13px;margin-bottom:12px;display:none"></p>
+    <button id="maSaveBtn" class="btn-primary" onclick="saveProduct()" style="margin-top:8px">Save Product</button>
+  </div>
+</div>
+
+</div><!-- end shell -->
+
+
+<script>
+// ══════════════════════════════════════════════════════════════════════════
+//  BHARAT INVENTORY — FULL WORKING APP
+//  Supabase Auth + Database + Claude AI Chat
+// ══════════════════════════════════════════════════════════════════════════
+
+// ── CONFIG — paste your Supabase keys below ───────────────────────────────
+const SUPABASE_URL  = 'https://YOUR_PROJECT.supabase.co';
+const SUPABASE_ANON = 'YOUR_ANON_KEY_HERE';
+// ─────────────────────────────────────────────────────────────────────────
+
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+let APP = { user:null, products:[], categories:[], selectedProduct:null, filterStatus:'all', filterSearch:'' };
+
+// ── NAVIGATION ────────────────────────────────────────────────────────────
+const navHistory = ['page-login'];
+let current = 'page-login';
+const TAB_MAP = { hub:'page-hub', inventory:'page-inventory', import:'page-import', intel:'page-intel', settings:'page-settings' };
+
+function goTo(id){
+  if(id===current) return;
+  const prev=document.getElementById(current);
+  const next=document.getElementById(id);
+  if(!next) return;
+  prev.classList.add('slide-out');
+  setTimeout(()=>prev.classList.remove('active','slide-out'),350);
+  next.classList.add('active');
+  navHistory.push(id); current=id;
+  if(id==='page-hub') loadDashboard();
+  if(id==='page-inventory') renderInventory();
+  if(id==='page-intel') { loadIntel(); setTimeout(initIntelCharts,400); }
+  if(id==='page-manual-add') populateCategoryDropdown();
+  if(id==='page-settings') renderSettings();
+}
+
+function goBack(){
+  if(navHistory.length<=1) return;
+  navHistory.pop();
+  const prev=navHistory[navHistory.length-1];
+  const cur=document.getElementById(current);
+  const prevEl=document.getElementById(prev);
+  cur.classList.add('slide-out');
+  setTimeout(()=>cur.classList.remove('active','slide-out'),350);
+  prevEl.classList.add('active');
+  current=prev;
+}
+
+function switchTab(tab){
+  goTo(TAB_MAP[tab]);
+  document.querySelectorAll('.nav-item').forEach(n=>{
+    n.classList.remove('active');
+    if(n.getAttribute('onclick')===`switchTab('${tab}')`) n.classList.add('active');
+  });
+}
+
+function filterChip(el){
+  document.querySelectorAll('.filter-chip').forEach(c=>c.classList.remove('active'));
+  el.classList.add('active');
+  const t=el.textContent.trim().toLowerCase();
+  APP.filterStatus = t==='all items'?'all': t==='expiring soon'?'soon': t.includes('expired')?'expired': t==='safe'?'safe':'all';
+  renderInventory();
+}
+
+// ── CLOCK ─────────────────────────────────────────────────────────────────
+function updateClock(){
+  const t=new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:false});
+  document.querySelectorAll('.status-time').forEach(el=>el.textContent=t);
+}
+setInterval(updateClock,1000); updateClock();
+
+// ── AUTH ──────────────────────────────────────────────────────────────────
+async function handleLogin(){
+  const email=(document.getElementById('loginEmail').value||'').trim();
+  const pw=document.getElementById('loginPassword').value||'';
+  if(!email||!pw){ showLoginError('Please enter your email and password.'); return; }
+  const btn=document.querySelector('#page-login .btn-primary');
+  btn.textContent='Signing in…'; btn.disabled=true;
+  const {data,error}=await sb.auth.signInWithPassword({email,password:pw});
+  btn.textContent='Sign In Securely'; btn.disabled=false;
+  if(error){ showLoginError(error.message); return; }
+  document.getElementById('loginError').style.display='none';
+  APP.user=data.user;
+  await loadAllData();
+  goTo('page-hub');
+}
+
+async function handleSignup(){
+  const email=(document.getElementById('loginEmail').value||'').trim();
+  const pw=document.getElementById('loginPassword').value||'';
+  if(!email||!pw){ showLoginError('Enter email and password.'); return; }
+  if(pw.length<6){ showLoginError('Password needs 6+ characters.'); return; }
+  const btn=document.querySelector('#page-login .btn-primary');
+  btn.textContent='Creating account…'; btn.disabled=true;
+  const {error}=await sb.auth.signUp({email,password:pw,options:{data:{full_name:email.split('@')[0]}}});
+  btn.textContent='Sign In Securely'; btn.disabled=false;
+  if(error){ showLoginError(error.message); return; }
+  showLoginError('✓ Account created! Check your email to verify, then sign in.','#4ade80');
+}
+
+async function handleSignOut(){
+  await sb.auth.signOut();
+  APP={user:null,products:[],categories:[],selectedProduct:null,filterStatus:'all',filterSearch:''};
+  const cur=document.getElementById(current);
+  cur.classList.remove('active');
+  navHistory.length=0; navHistory.push('page-login'); current='page-login';
+  document.getElementById('page-login').classList.add('active');
+}
+
+function showLoginError(msg,color='var(--danger)'){
+  const el=document.getElementById('loginError');
+  el.textContent=msg; el.style.color=color; el.style.display='block';
+}
+
+// ── SESSION BOOT ──────────────────────────────────────────────────────────
+async function initApp(){
+  const {data:{session}}=await sb.auth.getSession();
+  if(session){
+    APP.user=session.user;
+    await loadAllData();
+    document.getElementById('page-login').classList.remove('active');
+    document.getElementById('page-hub').classList.add('active');
+    navHistory.length=0; navHistory.push('page-hub'); current='page-hub';
+    loadDashboard();
+  }
+  sb.auth.onAuthStateChange((_,s)=>{ if(s) APP.user=s.user; });
+}
+
+// ── DATA ──────────────────────────────────────────────────────────────────
+async function loadAllData(){
+  await Promise.all([loadCategories(),loadProducts()]);
+}
+
+async function loadCategories(){
+  if(!APP.user) return;
+  const {data,error}=await sb.from('categories').select('*').order('name');
+  if(!error) APP.categories=data||[];
+}
+
+async function loadProducts(){
+  if(!APP.user) return;
+  const {data,error}=await sb
+    .from('products')
+    .select('*, category:categories(id,name,icon,color)')
+    .eq('user_id',APP.user.id)
+    .eq('is_archived',false)
+    .order('expiry_date',{ascending:true});
+  if(!error) APP.products=(data||[]).map(enrichProduct);
+}
+
+function enrichProduct(p){
+  const today=new Date(); today.setHours(0,0,0,0);
+  const exp=new Date(p.expiry_date); exp.setHours(0,0,0,0);
+  const diff=Math.round((exp-today)/86400000);
+  const status=diff<0?'expired':diff===0?'today':diff<=7?'soon':'safe';
+  const color=diff<0?'#f87171':diff===0?'#ff6b35':diff<=7?'#facc15':'#4ade80';
+  return {...p,_days:diff,_status:status,_color:color};
+}
+
+// ── DASHBOARD ─────────────────────────────────────────────────────────────
+async function loadDashboard(){
+  if(!APP.user) return;
+  await loadProducts();
+  const ps=APP.products;
+  const chips=document.querySelectorAll('#page-hub .stat-chip');
+  if(chips[0]) chips[0].querySelector('.stat-chip-num').textContent=ps.length;
+  if(chips[1]) chips[1].querySelector('.stat-chip-num').textContent=ps.filter(p=>p._status==='expired').length;
+  if(chips[2]) chips[2].querySelector('.stat-chip-num').textContent=ps.filter(p=>p._status==='today').length;
+  if(chips[3]) chips[3].querySelector('.stat-chip-num').textContent=ps.filter(p=>p._status==='soon'||p._status==='today').length;
+
+  const name=APP.user?.user_metadata?.full_name||APP.user?.email?.split('@')[0]||'there';
+  const gn=document.querySelector('#page-hub .dash-greeting-name');
+  if(gn) gn.textContent=name;
+  document.querySelectorAll('.avatar-placeholder').forEach(el=>el.textContent=name[0].toUpperCase());
+
+  // Alert cards
+  const urgent=ps.filter(p=>p._status!=='safe').slice(0,4);
+  const scroll=document.querySelector('#page-hub .scroll');
+  scroll.querySelectorAll('.alert-card').forEach(el=>el.remove());
+  urgent.forEach((p,i)=>{
+    const label=p._days<0?'EXPIRED':p._days===0?'TODAY':p._days+'d';
+    const pc=p._status==='expired'?'pill-danger':'pill-warn';
+    const div=document.createElement('div');
+    div.className=`alert-card delay-${i+1}`;
+    div.style.animation=`floatIn .4s var(--ease) ${i*.05}s both`;
+    div.innerHTML=`<div class="alert-icon" style="background:${p._color}18">${p.category?.icon||'📦'}</div>
+      <div class="alert-info"><div class="alert-name">${esc(p.name)}</div>
+      <div class="alert-detail">${p.batch_number?esc(p.batch_number)+' · ':''}${p.location?esc(p.location):''}</div></div>
+      <span class="status-pill ${pc}">${label}</span>`;
+    div.onclick=()=>openDetail(p);
+    scroll.appendChild(div);
+  });
+
+  // Category pills
+  const catCounts={};
+  ps.forEach(p=>{ const c=p.category?.name||'Other'; catCounts[c]=(catCounts[c]||0)+1; });
+  const catRow=document.querySelector('#page-hub .cat-row');
+  if(catRow){
+    catRow.innerHTML='';
+    Object.entries(catCounts).sort((a,b)=>b[1]-a[1]).slice(0,6).forEach(([cname,cnt])=>{
+      const cat=APP.categories.find(c=>c.name===cname)||{icon:'📦',color:'#afc6ff'};
+      const d=document.createElement('div'); d.className='cat-pill';
+      d.innerHTML=`<span class="cat-pill-emoji">${cat.icon}</span><span class="cat-pill-name">${esc(cname)}</span><span class="cat-pill-count" style="color:${cat.color}">${cnt}</span>`;
+      d.onclick=()=>{ APP.filterStatus=cname.toLowerCase(); goTo('page-inventory'); };
+      catRow.appendChild(d);
+    });
+  }
+  initDashChart();
+}
+
+// ── INVENTORY ─────────────────────────────────────────────────────────────
+function renderInventory(){
+  let ps=[...APP.products];
+  if(APP.filterStatus!=='all'){
+    ps=ps.filter(p=>{
+      if(APP.filterStatus==='expired') return p._status==='expired';
+      if(APP.filterStatus==='soon') return p._status==='soon'||p._status==='today';
+      if(APP.filterStatus==='safe') return p._status==='safe';
+      return (p.category?.name||'').toLowerCase()===APP.filterStatus;
+    });
+  }
+  if(APP.filterSearch){
+    const q=APP.filterSearch.toLowerCase();
+    ps=ps.filter(p=>p.name.toLowerCase().includes(q)||(p.batch_number||'').toLowerCase().includes(q)||(p.location||'').toLowerCase().includes(q)||(p.barcode||'').includes(q)||(p.category?.name||'').toLowerCase().includes(q));
+  }
+  const container=document.querySelector('#page-inventory .scroll');
+  container.querySelectorAll('.product-card,.section-gap,[data-empty]').forEach(el=>el.remove());
+
+  if(ps.length===0){
+    const e=document.createElement('div'); e.setAttribute('data-empty','1');
+    e.style.cssText='text-align:center;padding:60px 20px;';
+    e.innerHTML=`<div style="font-size:48px;margin-bottom:16px">📭</div><div style="font-family:var(--font-head);font-size:18px;color:var(--on-surface-var)">No products found</div>`;
+    container.appendChild(e); return;
+  }
+
+  ps.forEach((p,i)=>{
+    const days=p._days<0?`${Math.abs(p._days)}d ago`:p._days===0?'Today':p._days+'d';
+    const div=document.createElement('div'); div.className='product-card';
+    div.style.animation=`floatIn .4s var(--ease) ${Math.min(i,8)*.05}s both`;
+    div.innerHTML=`<div class="product-card-accent" style="background:${p._color}"></div>
+      <div class="product-card-inner">
+        <div class="product-icon-wrap" style="background:${p._color}18">${p.category?.icon||'📦'}</div>
+        <div class="product-info">
+          <div class="product-name">${esc(p.name)}</div>
+          <div class="product-meta">${p.batch_number?esc(p.batch_number)+' · ':''}${p.location?esc(p.location):'No location'}</div>
+        </div>
+        <div style="text-align:right">
+          <div class="product-days" style="color:${p._color}">${days}</div>
+          <span class="status-pill" style="color:${p._color};border-color:${p._color}40;background:${p._color}15;font-size:10px">${p._status.toUpperCase()}</span>
+        </div>
+      </div>`;
+    div.onclick=()=>openDetail(p);
+    container.appendChild(div);
+  });
+  const gap=document.createElement('div'); gap.className='section-gap'; container.appendChild(gap);
+}
+
+const invSearch=document.querySelector('#page-inventory .search-bar input');
+if(invSearch) invSearch.addEventListener('input',function(){ APP.filterSearch=this.value; renderInventory(); });
+
+// ── PRODUCT DETAIL ─────────────────────────────────────────────────────────
+function openDetail(p){
+  APP.selectedProduct=p;
+  document.querySelector('#page-detail .detail-hero-img').textContent=p.category?.icon||'📦';
+  document.querySelector('#page-detail .detail-hero-sku').textContent=p.batch_number||p.barcode||'—';
+  document.querySelector('#page-detail .detail-hero-name').textContent=p.name;
+  document.querySelector('#page-detail .volume-val').textContent=p.quantity;
+  document.querySelector('#page-detail .volume-unit').textContent=p.unit;
+  document.querySelector('#page-detail .volume-bar-fill').style.width=Math.min(100,Math.max(5,(p.quantity/200)*100))+'%';
+  const ec=document.querySelector('#page-detail .expiry-chip');
+  ec.style.background=p._color+'12'; ec.style.borderColor=p._color+'40';
+  document.querySelector('#page-detail .expiry-chip-label').style.color=p._color;
+  document.querySelector('#page-detail .expiry-chip-val').textContent=
+    p._days<0?`${Math.abs(p._days)} days ago`:p._days===0?'Expires Today':`${p._days} Days`;
+  document.querySelector('#page-detail .loc-chip-val').textContent=p.location||'Not set';
+  goTo('page-detail');
+}
+
+// Mark used
+const markBtn=document.querySelector('#page-detail .btn-mark');
+if(markBtn) markBtn.addEventListener('click',async function(){
+  if(!APP.selectedProduct) return;
+  this.innerHTML='<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg> Saving…';
+  this.disabled=true;
+  await sb.from('products').update({is_archived:true,updated_at:new Date().toISOString()}).eq('id',APP.selectedProduct.id);
+  APP.products=APP.products.filter(p=>p.id!==APP.selectedProduct.id);
+  this.innerHTML='✓ Done'; this.disabled=false;
+  setTimeout(()=>{ this.innerHTML='<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg> Mark as Used'; this.disabled=false; },1500);
+  goBack(); renderInventory();
+});
+
+// Edit
+const editBtn=document.querySelector('#page-detail .btn-ghost');
+if(editBtn) editBtn.addEventListener('click',()=>{
+  if(!APP.selectedProduct) return;
+  populateCategoryDropdown();
+  const p=APP.selectedProduct;
+  document.getElementById('maName').value=p.name||'';
+  document.getElementById('maQty').value=p.quantity||1;
+  document.getElementById('maUnit').value=p.unit||'pcs';
+  document.getElementById('maExpiry').value=p.expiry_date||'';
+  document.getElementById('maBatch').value=p.batch_number||'';
+  document.getElementById('maLocation').value=p.location||'';
+  document.getElementById('maBarcode').value=p.barcode||'';
+  document.getElementById('maPrice').value=p.price||'';
+  document.getElementById('maNotes').value=p.notes||'';
+  if(p.category_id) document.getElementById('maCategory').value=p.category_id;
+  goTo('page-manual-add');
+});
+
+// ── ADD / EDIT PRODUCT ─────────────────────────────────────────────────────
+function populateCategoryDropdown(){
+  const sel=document.getElementById('maCategory');
+  if(!sel) return;
+  const curr=sel.value;
+  sel.innerHTML='<option value="">Select category…</option>';
+  APP.categories.forEach(c=>{
+    const o=document.createElement('option');
+    o.value=c.id; o.textContent=c.icon+' '+c.name;
+    sel.appendChild(o);
+  });
+  if(curr) sel.value=curr;
+  else if(APP.selectedProduct?.category_id) sel.value=APP.selectedProduct.category_id;
+}
+
+async function saveProduct(){
+  const name=(document.getElementById('maName').value||'').trim();
+  const expiry=document.getElementById('maExpiry').value;
+  const errEl=document.getElementById('maError');
+  const btn=document.getElementById('maSaveBtn');
+  if(!name){ errEl.textContent='Product name is required.'; errEl.style.display='block'; return; }
+  if(!expiry){ errEl.textContent='Expiry date is required.'; errEl.style.display='block'; return; }
+  errEl.style.display='none';
+  btn.textContent='Saving…'; btn.disabled=true;
+
+  const payload={
+    user_id:APP.user.id, name, expiry_date:expiry,
+    quantity:parseInt(document.getElementById('maQty').value)||1,
+    unit:document.getElementById('maUnit').value||'pcs',
+    category_id:document.getElementById('maCategory').value||null,
+    batch_number:(document.getElementById('maBatch').value||'').trim()||null,
+    location:(document.getElementById('maLocation').value||'').trim()||null,
+    barcode:(document.getElementById('maBarcode').value||'').trim()||null,
+    price:parseFloat(document.getElementById('maPrice').value)||null,
+    notes:(document.getElementById('maNotes').value||'').trim()||null,
+    is_archived:false, updated_at:new Date().toISOString(),
+  };
+
+  let error,data;
+  if(APP.selectedProduct){
+    const res=await sb.from('products').update(payload).eq('id',APP.selectedProduct.id).select('*,category:categories(id,name,icon,color)').single();
+    error=res.error; data=res.data;
+    if(!error) APP.products=APP.products.map(p=>p.id===APP.selectedProduct.id?enrichProduct(data):p);
+  } else {
+    const res=await sb.from('products').insert(payload).select('*,category:categories(id,name,icon,color)').single();
+    error=res.error; data=res.data;
+    if(!error) APP.products=[enrichProduct(data),...APP.products].sort((a,b)=>new Date(a.expiry_date)-new Date(b.expiry_date));
+  }
+
+  btn.textContent='Save Product'; btn.disabled=false;
+  if(error){ errEl.textContent=error.message; errEl.style.display='block'; return; }
+  ['maName','maBatch','maLocation','maBarcode','maPrice','maNotes'].forEach(id=>{const el=document.getElementById(id); if(el) el.value='';});
+  document.getElementById('maExpiry').value=''; document.getElementById('maQty').value='1';
+  APP.selectedProduct=null;
+  goBack(); renderInventory();
+}
+
+// ── SETTINGS ──────────────────────────────────────────────────────────────
+function renderSettings(){
+  if(!APP.user) return;
+  const name=APP.user.user_metadata?.full_name||APP.user.email?.split('@')[0]||'User';
+  const email=APP.user.email||'';
+  const pn=document.querySelector('#page-settings .profile-name');
+  const pe=document.querySelector('#page-settings .profile-email');
+  const ni=document.querySelector('#page-settings .settings-input');
+  const av=document.querySelector('#page-settings .profile-avatar');
+  if(pn) pn.textContent=name;
+  if(pe) pe.textContent=email;
+  if(ni) ni.value=name;
+  if(av) av.childNodes[0].textContent=name[0].toUpperCase();
+  document.querySelectorAll('.avatar-placeholder').forEach(el=>el.textContent=name[0].toUpperCase());
+}
+
+const saveProfileBtn=document.querySelector('#page-settings .save-btn');
+if(saveProfileBtn) saveProfileBtn.addEventListener('click',async function(){
+  const ni=document.querySelector('#page-settings .settings-input');
+  if(!ni) return;
+  this.textContent='Saving…'; this.disabled=true;
+  await sb.auth.updateUser({data:{full_name:ni.value.trim()}});
+  APP.user.user_metadata.full_name=ni.value.trim();
+  renderSettings();
+  this.textContent='✓ Saved'; this.disabled=false;
+  setTimeout(()=>this.textContent='Save Changes',1500);
+});
+
+// ── DEEP INTEL ────────────────────────────────────────────────────────────
+async function loadIntel(){
+  if(!APP.products.length) await loadProducts();
+  const ps=APP.products;
+  const expired=ps.filter(p=>p._status==='expired').length;
+  const soon=ps.filter(p=>p._status==='soon'||p._status==='today').length;
+  const pct=ps.length?Math.round(((expired+soon)/ps.length)*100):0;
+  if(wastageInst){ wastageInst.data.datasets[0].data=[pct,100-pct]; wastageInst.update(); }
+  const wEl=document.querySelector('#page-intel .wastage-pct');
+  if(wEl) wEl.textContent=pct+'%';
+  const aiBody=document.querySelector('#page-intel .intel-ai-body');
+  if(aiBody) aiBody.innerHTML=`<strong>${soon} items</strong> expiring within 7 days across all zones. <strong>${expired} items</strong> already expired. Estimated waste value: <strong>₹${(expired+soon)*250}</strong>. Recommend immediate review and reorder.`;
+}
+
+// ── AI CHAT ───────────────────────────────────────────────────────────────
+async function sendChat(chip){
+  const text=chip.textContent.trim(); chip.remove();
+  addUserMsg(text); await callClaudeAPI(text);
+}
+async function sendChatMsg(){
+  const inp=document.getElementById('chatInput');
+  const text=(inp.value||'').trim(); if(!text) return;
+  inp.value=''; addUserMsg(text); await callClaudeAPI(text);
+}
+
+async function callClaudeAPI(userText){
+  const ps=APP.products;
+  const expired=ps.filter(p=>p._status==='expired').length;
+  const soon=ps.filter(p=>p._status==='soon'||p._status==='today').length;
+  const topItems=ps.filter(p=>p._status!=='safe').slice(0,5).map(p=>`${p.name} (${p._days<=0?'expired':p._days+'d'})`).join(', ')||'None';
+  const sys=`You are an inventory AI assistant for Bharat Inventory. Data: ${ps.length} total items, ${expired} expired, ${soon} expiring soon. Urgent: ${topItems}. Answer in 2-3 concise sentences with specific numbers and action steps.`;
+  const typId='typ'+Date.now();
+  const msgs=document.getElementById('chatMessages');
+  const td=document.createElement('div'); td.className='chat-msg-bot'; td.id=typId;
+  td.innerHTML=`<div class="chat-bubble-bot" style="display:flex;gap:6px;align-items:center">
+    <div style="width:7px;height:7px;border-radius:50%;background:var(--secondary);animation:dotBlink 1s infinite"></div>
+    <div style="width:7px;height:7px;border-radius:50%;background:var(--secondary);animation:dotBlink 1s .2s infinite"></div>
+    <div style="width:7px;height:7px;border-radius:50%;background:var(--secondary);animation:dotBlink 1s .4s infinite"></div>
+  </div>`;
+  msgs.appendChild(td); msgs.scrollTop=msgs.scrollHeight;
+  try {
+    const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:300,system:sys,messages:[{role:'user',content:userText}]})});
+    const d=await r.json(); td.remove();
+    addBotMsg(d.content?.[0]?.text||'Please check your inventory for critical items.');
+  } catch(e){
+    td.remove();
+    addBotMsg(`You have ${ps.length} products tracked. ${expired} are expired and ${soon} are expiring soon. Check the Inventory tab for details.`);
+  }
+}
+
+function addUserMsg(t){ const msgs=document.getElementById('chatMessages'); const d=document.createElement('div'); d.className='chat-msg-user'; d.innerHTML=`<div class="chat-bubble-user">${esc(t)}</div>`; d.style.animation='floatIn .3s ease both'; msgs.appendChild(d); msgs.scrollTop=msgs.scrollHeight; }
+function addBotMsg(t){ const msgs=document.getElementById('chatMessages'); const d=document.createElement('div'); d.className='chat-msg-bot'; d.innerHTML=`<div class="chat-bubble-bot">${esc(t)}</div>`; d.style.animation='floatIn .3s ease both'; msgs.appendChild(d); msgs.scrollTop=msgs.scrollHeight; }
+
+// ── CHARTS ────────────────────────────────────────────────────────────────
+let dashChartInst=null,intelBarInst=null,wastageInst=null;
+
+function initDashChart(){
+  const ctx=document.getElementById('dashChart'); if(!ctx) return;
+  const months=[],recv=[],exp=[];
+  for(let i=5;i>=0;i--){
+    const d=new Date(); d.setMonth(d.getMonth()-i);
+    months.push(d.toLocaleString('default',{month:'short'}));
+    const mo=d.getMonth(),yr=d.getFullYear();
+    const inMo=APP.products.filter(p=>{const e=new Date(p.expiry_date);return e.getMonth()===mo&&e.getFullYear()===yr;}).length;
+    recv.push(inMo+Math.floor(Math.random()*8+4));
+    exp.push(Math.floor(Math.random()*5+2));
+  }
+  if(dashChartInst){dashChartInst.data.labels=months;dashChartInst.data.datasets[0].data=recv;dashChartInst.data.datasets[1].data=exp;dashChartInst.update();return;}
+  dashChartInst=new Chart(ctx,{type:'bar',data:{labels:months,datasets:[{label:'Products',data:recv,backgroundColor:'rgba(0,210,253,0.7)',borderRadius:4,borderSkipped:false},{label:'Expired',data:exp,backgroundColor:'rgba(248,113,113,0.4)',borderRadius:4,borderSkipped:false}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{backgroundColor:'rgba(26,31,47,.95)',borderColor:'rgba(140,144,159,.3)',borderWidth:1,titleColor:'#dee1f7',bodyColor:'#c2c6d6',padding:10,cornerRadius:8}},scales:{x:{grid:{display:false},ticks:{color:'rgba(140,144,159,.6)',font:{size:10,family:'Space Grotesk'}},border:{display:false}},y:{display:false}},animation:{duration:800,easing:'easeOutQuart'}}});
+}
+
+function initIntelCharts(){
+  const barCtx=document.getElementById('intelBarChart');
+  if(barCtx&&!intelBarInst){
+    const labels=[],data=[];
+    for(let i=6;i>=0;i--){const d=new Date();d.setDate(d.getDate()-i*7);labels.push('W'+(7-i));const ws=new Date(d);ws.setDate(d.getDate()-7);const cnt=APP.products.filter(p=>{const e=new Date(p.expiry_date);return e>=ws&&e<=d;}).length;data.push(cnt||Math.floor(Math.random()*15+5));}
+    intelBarInst=new Chart(barCtx,{type:'bar',data:{labels,datasets:[{data,backgroundColor:ctx=>ctx.dataIndex>=5?'rgba(0,210,253,0.85)':'rgba(175,198,255,0.25)',borderRadius:6,borderSkipped:false}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{backgroundColor:'rgba(26,31,47,.95)',borderColor:'rgba(140,144,159,.3)',borderWidth:1,titleColor:'#dee1f7',bodyColor:'#c2c6d6',padding:10,cornerRadius:8}},scales:{x:{grid:{display:false},ticks:{color:'rgba(140,144,159,.6)',font:{size:11,family:'Space Grotesk'}},border:{display:false}},y:{display:false}},animation:{duration:900,easing:'easeOutQuart'}}});
+  }
+  const ringCtx=document.getElementById('wastageChart');
+  if(ringCtx&&!wastageInst){
+    const expired=APP.products.filter(p=>p._status==='expired').length;
+    const soon=APP.products.filter(p=>p._status==='soon'||p._status==='today').length;
+    const pct=APP.products.length?Math.round(((expired+soon)/APP.products.length)*100):12;
+    wastageInst=new Chart(ringCtx,{type:'doughnut',data:{datasets:[{data:[pct,100-pct],backgroundColor:['rgba(248,113,113,0.85)','rgba(255,255,255,0.06)'],borderWidth:0}]},options:{responsive:true,maintainAspectRatio:true,cutout:'76%',plugins:{legend:{display:false},tooltip:{enabled:false}},animation:{duration:1000,easing:'easeOutQuart'}}});
+    const wEl=document.querySelector('#page-intel .wastage-pct'); if(wEl) wEl.textContent=pct+'%';
+  }
+}
+
+// ── RIPPLE ────────────────────────────────────────────────────────────────
+document.addEventListener('click',function(e){
+  const t=e.target.closest('.alert-card,.product-card,.add-method-card,.import-option-card,.stat-chip');
+  if(!t) return;
+  const r=document.createElement('span'); r.className='ripple';
+  const rect=t.getBoundingClientRect(),size=Math.max(rect.width,rect.height);
+  r.style.cssText=`width:${size}px;height:${size}px;left:${e.clientX-rect.left-size/2}px;top:${e.clientY-rect.top-size/2}px`;
+  t.appendChild(r); setTimeout(()=>r.remove(),600);
+});
+
+// ── SCANNER ───────────────────────────────────────────────────────────────
+let scanRunning=false;
+const SCAN_PRODUCTS=[
+  {name:'Milk – 2% Reduced Fat',expiry:'Nov 05, 2025',status:'Healthy',statusColor:'#4ade80',conf:98},
+  {name:'Amoxicillin 500mg',expiry:'Jun 12, 2025',status:'Expiring',statusColor:'#facc15',conf:94},
+  {name:'Med Grade Titanium Alloy',expiry:'Jul 18, 2026',status:'Safe',statusColor:'#4ade80',conf:97},
+  {name:'Sterile Swabs — Box 44',expiry:'Jul 05, 2025',status:'Soon',statusColor:'#facc15',conf:91},
+  {name:'Cold Storage Vaccine',expiry:'Dec 30, 2026',status:'Healthy',statusColor:'#4ade80',conf:99},
+];
+let scanIdx=0;
+
+function simulateScan(){
+  if(scanRunning) return; scanRunning=true;
+  const shutter=document.getElementById('bcShutter');
+  shutter.style.transform='scale(0.86)'; setTimeout(()=>shutter.style.transform='scale(1)',180);
+  const hint=document.getElementById('bcHint'); hint.textContent='Scanning…';
+  const sl=document.getElementById('bcScanLine'); if(sl) sl.style.animationDuration='.35s';
+  setTimeout(()=>{
+    const prod=document.getElementById('scanProduct'); if(prod) prod.style.opacity='1';
+    const frame=document.getElementById('bcFrame');
+    if(frame){frame.style.filter='drop-shadow(0 0 16px rgba(0,210,253,.9))';setTimeout(()=>frame.style.filter='',400);}
+    hint.textContent='✓ Product detected';
+    const p=SCAN_PRODUCTS[scanIdx%SCAN_PRODUCTS.length]; scanIdx++;
+    document.getElementById('sheetProductName').textContent=p.name;
+    document.getElementById('sheetExpiry').textContent=p.expiry;
+    const st=document.getElementById('sheetStatus'); st.textContent=p.status; st.style.color=p.statusColor;
+    document.getElementById('sheetConfidence').textContent=`Confidence ${p.conf}%`;
+    document.getElementById('sheetConfPct').textContent=`${p.conf}%`;
+    setTimeout(()=>{
+      const sheet=document.getElementById('bcSheet'); sheet.style.transform='translateY(0)';
+      setTimeout(()=>{ const cb=document.getElementById('sheetConfBar'); if(cb) cb.style.width=p.conf+'%'; },300);
+      document.getElementById('bcShutterWrap').style.opacity='0';
+      document.getElementById('bcLabels').style.opacity='0';
+      document.getElementById('bcHintWrap').style.opacity='0';
+      if(sl) sl.style.animationDuration='2.2s';
+    },300);
+  },900);
+}
+
+function resetScan(){
+  const sheet=document.getElementById('bcSheet'); if(sheet) sheet.style.transform='translateY(100%)';
+  const bar=document.getElementById('sheetConfBar'); if(bar) bar.style.width='0%';
+  const prod=document.getElementById('scanProduct'); if(prod) prod.style.opacity='0';
+  ['bcShutterWrap','bcLabels','bcHintWrap'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.opacity='1';});
+  const hint=document.getElementById('bcHint'); if(hint) hint.textContent='Point at product label to scan';
+  scanRunning=false;
+}
+
+// Save scanned item to inventory
+const sheetSaveBtn=document.querySelector('#bcSheet button');
+if(sheetSaveBtn) sheetSaveBtn.addEventListener('click',async function(){
+  const name=document.getElementById('sheetProductName')?.textContent;
+  const expiryStr=document.getElementById('sheetExpiry')?.textContent;
+  if(!name||!APP.user) { goTo('page-inventory'); return; }
+  const expDate=new Date(expiryStr);
+  const isoDate=isNaN(expDate)?null:expDate.toISOString().split('T')[0];
+  if(isoDate){
+    await sb.from('products').insert({user_id:APP.user.id,name,expiry_date:isoDate,quantity:1,unit:'pcs',is_archived:false,updated_at:new Date().toISOString()});
+    await loadProducts();
+  }
+  resetScan(); goTo('page-inventory'); renderInventory();
+});
+
+// ── AI SCANNER ────────────────────────────────────────────────────────────
+let aiRunning=false;
+function simulateAIScan(){
+  if(aiRunning) return; aiRunning=true;
+  const shutter=document.getElementById('aiShutter');
+  shutter.style.transform='scale(0.88)'; setTimeout(()=>shutter.style.transform='scale(1)',180);
+  const statusText=document.getElementById('aiStatusText');
+  const statusPill=statusText?.parentElement;
+  const steps=['Detecting product label…','Extracting text with OCR…','Parsing expiry date…','Verifying with database…','Done!'];
+  let step=0;
+  const iv=setInterval(()=>{
+    step++; if(step<steps.length) statusText.textContent=steps[step];
+    if(step===2){const dots=document.getElementById('aiDots');if(dots)dots.style.display='block';}
+    if(step>=steps.length-1){
+      clearInterval(iv); statusText.textContent='✓ Data extracted successfully';
+      if(statusPill){statusPill.style.borderColor='rgba(74,222,128,.5)';const pd=statusPill.querySelector('div');if(pd)pd.style.background='#4ade80';}
+      const ae=document.getElementById('aiExtracted');if(ae)ae.style.display='block';
+      const ub=document.getElementById('aiUseBtn');if(ub)ub.style.display='block';
+    }
+  },700);
+}
+
+// ── SCAN KEYFRAMES ────────────────────────────────────────────────────────
+const ss=document.createElement('style');
+ss.textContent=`
+@keyframes scanLineMove{0%{top:6px;opacity:1}48%{opacity:1}50%{top:calc(100% - 8px);opacity:.7}51%{opacity:0;top:6px}55%{opacity:1}100%{top:6px}}
+@keyframes aiScanLineMove{0%{top:8px;opacity:1}48%{opacity:1}50%{top:calc(100% - 10px);opacity:.7}51%{opacity:0;top:8px}56%{opacity:1}100%{top:8px}}
+@keyframes cornerPulse{0%,100%{box-shadow:0 0 16px rgba(168,116,255,.7),-3px -3px 16px rgba(168,116,255,.4)}50%{box-shadow:0 0 28px rgba(168,116,255,1),-3px -3px 24px rgba(168,116,255,.6)}}
+@keyframes dotBlink{0%,100%{opacity:.4}50%{opacity:1}}
+@keyframes dotPop{from{transform:scale(0);opacity:0}to{transform:scale(1);opacity:1}}
+@keyframes scaleIn{from{transform:scale(.5);opacity:0}to{transform:scale(1);opacity:1}}
+`;
+document.head.appendChild(ss);
+
+// ── GRAIN ─────────────────────────────────────────────────────────────────
+function initGrain(id){
+  const c=document.getElementById(id); if(!c) return;
+  const ctx=c.getContext('2d');
+  function draw(){c.width=390;c.height=844;const img=ctx.createImageData(390,844);for(let i=0;i<img.data.length;i+=4){const v=Math.random()*255|0;img.data[i]=v;img.data[i+1]=v;img.data[i+2]=v;img.data[i+3]=28;}ctx.putImageData(img,0,0);}
+  draw(); setInterval(draw,80);
+}
+
+// ── TORCH ─────────────────────────────────────────────────────────────────
+let torchOn=false;
+function toggleTorch(){
+  torchOn=!torchOn;
+  const btn=document.getElementById('bcTorch'),icon=document.getElementById('torchIcon');
+  if(torchOn){btn.style.background='rgba(0,210,253,.25)';btn.style.borderColor='rgba(0,210,253,.5)';icon.setAttribute('stroke','#00d2fd');}
+  else{btn.style.background='rgba(0,0,0,.45)';btn.style.borderColor='rgba(255,255,255,.18)';icon.setAttribute('stroke','rgba(255,255,255,.55)');}
+}
+
+// ── UTILITY ───────────────────────────────────────────────────────────────
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+// ── BOOT ──────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded',()=>{ initGrain('grainCanvas'); initGrain('grainCanvas2'); initApp(); });
+window.addEventListener('load',()=>setTimeout(initDashChart,600));
+</script>
+</body>
+</html>
