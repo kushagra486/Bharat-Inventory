@@ -1,0 +1,70 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Extract version from tag
+        id: version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+      - name: Get changelog entry
+        id: changelog
+        run: |
+          VERSION="${{ steps.version.outputs.VERSION }}"
+          CLEAN="${VERSION#v}"
+          NOTES=$(awk -v ver="$CLEAN" '
+            $0 ~ "^## \\[" ver "\\]" { found=1; next }
+            found && /^## \[/ { exit }
+            found { print }
+          ' CHANGELOG.md)
+          echo "NOTES<<EOF" >> $GITHUB_OUTPUT
+          echo "$NOTES" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Find release file
+        id: file
+        run: |
+          VERSION="${{ steps.version.outputs.VERSION }}"
+          CLEAN="${VERSION#v}"
+          MAJOR="${CLEAN%%.*}"
+          MINOR="${CLEAN#*.}"; MINOR="${MINOR%%.*}"
+          if [ "${MAJOR}" = "1" ]; then
+            DIR="releases/v${MAJOR}.${MINOR}-prototype"
+          else
+            DIR="releases/v${MAJOR}.${MINOR}-working"
+          fi
+          FILE=$(find "$DIR" -maxdepth 1 -name '*.html' | head -n 1)
+          if [ -z "$FILE" ]; then
+            echo "::error::No .html release file found in $DIR for tag $VERSION"
+            exit 1
+          fi
+          echo "FILE=$FILE" >> $GITHUB_OUTPUT
+          echo "Packaging: $FILE"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "Bharat Inventory ${{ steps.version.outputs.VERSION }}"
+          body: |
+            ## Bharat Inventory ${{ steps.version.outputs.VERSION }}
+
+            ${{ steps.changelog.outputs.NOTES }}
+
+            ---
+            **Download the single HTML file below and open it in any browser.**
+            No installation. No build step. No server required.
+          files: ${{ steps.file.outputs.FILE }}
+          draft: false
+          prerelease: ${{ contains(steps.version.outputs.VERSION, 'alpha') || contains(steps.version.outputs.VERSION, 'beta') || contains(steps.version.outputs.VERSION, 'rc') }}
