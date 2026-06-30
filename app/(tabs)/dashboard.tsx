@@ -123,7 +123,7 @@ export default function DashboardScreen() {
           <StatCard label="Safe" value={stats.safe} color={COLORS.safe} icon="✅" />
           <TouchableOpacity
             style={[styles.statCard, styles.addCard]}
-            onPress={() => router.push('/products/add')}
+            onPress={() => router.push('/products/add-hub')}
           >
             <Ionicons name="add-circle-outline" size={28} color={COLORS.accentCyan} />
             <Text style={[styles.statLabel, { color: COLORS.accentCyan }]}>Add Product</Text>
@@ -178,7 +178,7 @@ export default function DashboardScreen() {
               <View style={styles.emptyState}>
                 <Text style={styles.emptyIcon}>📭</Text>
                 <Text style={styles.emptyText}>No products yet</Text>
-                <TouchableOpacity onPress={() => router.push('/products/add')}>
+                <TouchableOpacity onPress={() => router.push('/products/add-hub')}>
                   <Text style={styles.emptyAction}>Add your first product →</Text>
                 </TouchableOpacity>
               </View>
