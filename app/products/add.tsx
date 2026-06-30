@@ -22,13 +22,33 @@ const TEXT_FIELDS: Field[] = [
   { label: 'Notes', key: 'notes', placeholder: 'Any additional notes...' },
 ];
 
+type PrefillParams = {
+  id?: string;
+  barcode?: string;
+  prefillName?: string;
+  prefillBrand?: string;
+  prefillCategory?: string;
+  prefillImage?: string;
+  prefillExpiry?: string;
+  prefillMfg?: string;
+  prefillBatch?: string;
+};
+
 export default function AddProductScreen() {
-  const { id } = useLocalSearchParams<{ id?: string }>();
+  const params = useLocalSearchParams<PrefillParams>();
+  const { id } = params;
   const isEditing = !!id;
 
   const [form, setForm] = useState<Partial<ProductInsert>>({
     quantity: 1,
     unit: 'pcs',
+    barcode: params.barcode || undefined,
+    name: params.prefillName ? decodeURIComponent(params.prefillName) : undefined,
+    expiry_date: params.prefillExpiry || undefined,
+    manufacture_date: params.prefillMfg || undefined,
+    batch_number: params.prefillBatch || undefined,
+    image_url: params.prefillImage || undefined,
+    notes: params.prefillBrand ? `Brand: ${decodeURIComponent(params.prefillBrand)}` : undefined,
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [categories, setCategories] = useState<Category[]>([]);
@@ -37,11 +57,23 @@ export default function AddProductScreen() {
   const [showExpiryPicker, setShowExpiryPicker] = useState(false);
   const [showMfgPicker, setShowMfgPicker] = useState(false);
   const [showUnitPicker, setShowUnitPicker] = useState(false);
+  const [prefillBanner, setPrefillBanner] = useState(
+    !!(params.prefillName || params.prefillExpiry || params.prefillBatch)
+  );
 
   useEffect(() => {
     Promise.all([getCategories(), getSuppliers()]).then(([cats, sups]) => {
       setCategories(cats);
       setSuppliers(sups);
+
+      // Resolve the category guess (from scan) to an actual category id once
+      // the live category list is loaded.
+      if (params.prefillCategory && !isEditing) {
+        const match = cats.find(
+          (c: Category) => c.name.toLowerCase() === params.prefillCategory!.toLowerCase()
+        );
+        if (match) setForm(f => ({ ...f, category_id: match.id }));
+      }
     });
 
     if (isEditing) {
@@ -98,6 +130,18 @@ export default function AddProductScreen() {
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
+
+        {prefillBanner && (
+          <View style={styles.prefillBanner}>
+            <Ionicons name="sparkles-outline" size={18} color={COLORS.accentCyan} />
+            <Text style={styles.prefillBannerText}>
+              Some fields were auto-filled — please double-check before saving.
+            </Text>
+            <TouchableOpacity onPress={() => setPrefillBanner(false)}>
+              <Ionicons name="close" size={18} color={COLORS.textMuted} />
+            </TouchableOpacity>
+          </View>
+        )}
 
         {/* Text Fields */}
         {TEXT_FIELDS.map(field => (
@@ -305,6 +349,13 @@ const styles = StyleSheet.create({
   },
   title: { fontSize: FONT_SIZES.lg, fontWeight: '700', color: COLORS.textPrimary },
   scroll: { padding: SPACING.xl, paddingBottom: 100 },
+  prefillBanner: {
+    flexDirection: 'row', alignItems: 'center', gap: SPACING.sm,
+    backgroundColor: `${COLORS.accentCyan}15`, borderRadius: RADIUS.md,
+    borderWidth: 1, borderColor: `${COLORS.accentCyan}40`,
+    padding: SPACING.md, marginBottom: SPACING.lg,
+  },
+  prefillBannerText: { flex: 1, fontSize: FONT_SIZES.xs, color: COLORS.textSecondary },
   fieldGroup: { marginBottom: SPACING.lg },
   label: { fontSize: FONT_SIZES.sm, color: COLORS.textSecondary, marginBottom: SPACING.sm, fontWeight: '600' },
   input: {
