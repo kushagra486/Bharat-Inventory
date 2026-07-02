@@ -1,0 +1,1 @@
+if('serviceWorker' in navigator) {window.addEventListener('load', () => {navigator.serviceWorker.register('/Bharat-Inventory/sw.js', { scope: '/Bharat-Inventory/' })})}
