@@ -197,7 +197,7 @@ export default function SettingsScreen() {
         <SettingsSection title="Account">
           <SettingsRow
             icon="person-circle-outline"
-            label={user?.name ?? 'My Account'}
+            label={user?.name || 'My Account'}
             sublabel={user?.email}
             onPress={() => router.push('/settings/profile')}
           />
