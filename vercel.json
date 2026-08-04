@@ -1,0 +1,12 @@
+{
+  "buildCommand": "npx expo export --platform web",
+  "outputDirectory": "dist",
+  "cleanUrls": true,
+  "trailingSlash": false,
+  "rewrites": [
+    {
+      "source": "/products/:id([0-9a-fA-F-]{36})",
+      "destination": "/products/[id].html"
+    }
+  ]
+}

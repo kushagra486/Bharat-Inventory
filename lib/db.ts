@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import { Product, ProductInsert, ProductUpdate, Category, Supplier, ProductFilters } from '@/types';
+import { Product, ProductInsert, ProductUpdate, Category, Supplier, ProductFilters, UserProfile } from '@/types';
 import { enrichProducts } from './utils';
 
 // ─── Products ─────────────────────────────────────────────────────────────────
@@ -197,6 +197,41 @@ export async function addSupplier(supplier: Omit<Supplier, 'id' | 'user_id' | 'c
 
   if (error) throw error;
   return data as Supplier;
+}
+
+export async function deleteSupplier(id: string): Promise<void> {
+  const { error } = await supabase.from('suppliers').delete().eq('id', id);
+  if (error) throw error;
+}
+
+// ─── Profile ──────────────────────────────────────────────────────────────────
+
+export async function getProfile(): Promise<UserProfile | null> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
+
+  const { data, error } = await supabase
+    .from('user_profiles')
+    .select('*')
+    .eq('id', user.id)
+    .single();
+
+  if (error) return null;
+  return { ...data, email: user.email } as UserProfile;
+}
+
+export async function updateProfile(updates: { full_name?: string; avatar_url?: string }): Promise<void> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Not signed in');
+
+  const { error: profileError } = await supabase
+    .from('user_profiles')
+    .update(updates)
+    .eq('id', user.id);
+  if (profileError) throw profileError;
+
+  const { error: authError } = await supabase.auth.updateUser({ data: updates });
+  if (authError) throw authError;
 }
 
 // ─── Products for Calendar ────────────────────────────────────────────────────
