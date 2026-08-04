@@ -1,45 +1,66 @@
-import { supabase } from './supabase';
+import { databases, account, DATABASE_ID, COLLECTIONS, ID, Query, Permission, Role } from './appwrite';
 import { Product, ProductInsert, ProductUpdate, Category, Supplier, ProductFilters, UserProfile } from '@/types';
 import { enrichProducts } from './utils';
+
+function mapDoc<T>(doc: any): T {
+  const { $id, $createdAt, $updatedAt, $permissions, $databaseId, $collectionId, ...rest } = doc;
+  return { id: $id, created_at: $createdAt, updated_at: $updatedAt, ...rest } as T;
+}
+
+async function currentUserId(): Promise<string> {
+  const user = await account.get();
+  return user.$id;
+}
+
+function ownerPermissions(userId: string) {
+  return [
+    Permission.read(Role.user(userId)),
+    Permission.update(Role.user(userId)),
+    Permission.delete(Role.user(userId)),
+  ];
+}
 
 // ─── Products ─────────────────────────────────────────────────────────────────
 
 export async function getProducts(filters?: ProductFilters): Promise<Product[]> {
-  let query = supabase
-    .from('products')
-    .select(`
-      *,
-      category:categories(*),
-      supplier:suppliers(*)
-    `)
-    .eq('is_archived', filters?.is_archived ?? false)
-    .order('expiry_date', { ascending: true });
+  const userId = await currentUserId();
+  const queries = [
+    Query.equal('user_id', userId),
+    Query.equal('is_archived', filters?.is_archived ?? false),
+    Query.orderAsc('expiry_date'),
+    Query.limit(1000),
+  ];
 
-  if (filters?.category_id) {
-    query = query.eq('category_id', filters.category_id);
-  }
-  if (filters?.supplier_id) {
-    query = query.eq('supplier_id', filters.supplier_id);
-  }
-  if (filters?.barcode) {
-    query = query.eq('barcode', filters.barcode);
-  }
+  if (filters?.category_id) queries.push(Query.equal('category_id', filters.category_id));
+  if (filters?.supplier_id) queries.push(Query.equal('supplier_id', filters.supplier_id));
+  if (filters?.barcode) queries.push(Query.equal('barcode', filters.barcode));
+  if (filters?.date_from) queries.push(Query.greaterThanEqual('expiry_date', filters.date_from));
+  if (filters?.date_to) queries.push(Query.lessThanEqual('expiry_date', filters.date_to));
+
+  const [res, categories, suppliers] = await Promise.all([
+    databases.listDocuments(DATABASE_ID, COLLECTIONS.products, queries),
+    getCategories(),
+    getSuppliers(),
+  ]);
+
+  const categoryMap = new Map(categories.map(c => [c.id, c]));
+  const supplierMap = new Map(suppliers.map(s => [s.id, s]));
+
+  let products: Product[] = res.documents.map(doc => {
+    const p = mapDoc<Product>(doc);
+    return {
+      ...p,
+      category: categoryMap.get(p.category_id),
+      supplier: p.supplier_id ? supplierMap.get(p.supplier_id) : undefined,
+    };
+  });
+
+  products = enrichProducts(products);
+
   if (filters?.location) {
-    query = query.ilike('location', `%${filters.location}%`);
+    const q = filters.location.toLowerCase();
+    products = products.filter(p => p.location?.toLowerCase().includes(q));
   }
-  if (filters?.date_from) {
-    query = query.gte('expiry_date', filters.date_from);
-  }
-  if (filters?.date_to) {
-    query = query.lte('expiry_date', filters.date_to);
-  }
-
-  const { data, error } = await query;
-  if (error) throw error;
-
-  let products = enrichProducts(data as Product[]);
-
-  // Client-side filters
   if (filters?.search) {
     const q = filters.search.toLowerCase();
     products = products.filter(p =>
@@ -49,7 +70,6 @@ export async function getProducts(filters?: ProductFilters): Promise<Product[]> 
       p.location?.toLowerCase().includes(q)
     );
   }
-
   if (filters?.status && filters.status !== 'all') {
     products = products.filter(p => p.expiry_status === filters.status);
   }
@@ -58,52 +78,62 @@ export async function getProducts(filters?: ProductFilters): Promise<Product[]> 
 }
 
 export async function getProductById(id: string): Promise<Product | null> {
-  const { data, error } = await supabase
-    .from('products')
-    .select(`*, category:categories(*), supplier:suppliers(*)`)
-    .eq('id', id)
-    .single();
-
-  if (error) return null;
-  return enrichProducts([data as Product])[0];
+  try {
+    const [doc, categories, suppliers] = await Promise.all([
+      databases.getDocument(DATABASE_ID, COLLECTIONS.products, id),
+      getCategories(),
+      getSuppliers(),
+    ]);
+    const p = mapDoc<Product>(doc);
+    const product: Product = {
+      ...p,
+      category: categories.find(c => c.id === p.category_id),
+      supplier: p.supplier_id ? suppliers.find(s => s.id === p.supplier_id) : undefined,
+    };
+    return enrichProducts([product])[0];
+  } catch {
+    return null;
+  }
 }
 
 export async function addProduct(product: ProductInsert): Promise<Product> {
-  const { data: { user } } = await supabase.auth.getUser();
-  const { data, error } = await supabase
-    .from('products')
-    .insert({ ...product, user_id: user!.id })
-    .select(`*, category:categories(*), supplier:suppliers(*)`)
-    .single();
-
-  if (error) throw error;
-  return enrichProducts([data as Product])[0];
+  const userId = await currentUserId();
+  const doc = await databases.createDocument(
+    DATABASE_ID,
+    COLLECTIONS.products,
+    ID.unique(),
+    { ...product, user_id: userId, is_archived: false },
+    ownerPermissions(userId)
+  );
+  const p = mapDoc<Product>(doc);
+  const [categories, suppliers] = await Promise.all([getCategories(), getSuppliers()]);
+  const enriched: Product = {
+    ...p,
+    category: categories.find(c => c.id === p.category_id),
+    supplier: p.supplier_id ? suppliers.find(s => s.id === p.supplier_id) : undefined,
+  };
+  return enrichProducts([enriched])[0];
 }
 
 export async function updateProduct(product: ProductUpdate): Promise<Product> {
   const { id, ...updates } = product;
-  const { data, error } = await supabase
-    .from('products')
-    .update({ ...updates, updated_at: new Date().toISOString() })
-    .eq('id', id)
-    .select(`*, category:categories(*), supplier:suppliers(*)`)
-    .single();
-
-  if (error) throw error;
-  return enrichProducts([data as Product])[0];
+  const doc = await databases.updateDocument(DATABASE_ID, COLLECTIONS.products, id, updates);
+  const p = mapDoc<Product>(doc);
+  const [categories, suppliers] = await Promise.all([getCategories(), getSuppliers()]);
+  const enriched: Product = {
+    ...p,
+    category: categories.find(c => c.id === p.category_id),
+    supplier: p.supplier_id ? suppliers.find(s => s.id === p.supplier_id) : undefined,
+  };
+  return enrichProducts([enriched])[0];
 }
 
 export async function deleteProduct(id: string): Promise<void> {
-  const { error } = await supabase.from('products').delete().eq('id', id);
-  if (error) throw error;
+  await databases.deleteDocument(DATABASE_ID, COLLECTIONS.products, id);
 }
 
 export async function archiveProduct(id: string, archive = true): Promise<void> {
-  const { error } = await supabase
-    .from('products')
-    .update({ is_archived: archive, updated_at: new Date().toISOString() })
-    .eq('id', id);
-  if (error) throw error;
+  await databases.updateDocument(DATABASE_ID, COLLECTIONS.products, id, { is_archived: archive });
 }
 
 export async function duplicateProduct(id: string): Promise<Product> {
@@ -129,18 +159,14 @@ export async function getDashboardStats() {
 }
 
 export async function getProductsByCategory() {
-  const { data, error } = await supabase
-    .from('products')
-    .select(`category_id, categories(name, icon, color)`)
-    .eq('is_archived', false);
-
-  if (error) throw error;
+  const products = await getProducts();
 
   const counts: Record<string, { name: string; icon: string; color: string; count: number }> = {};
-  data.forEach((p: any) => {
+  products.forEach(p => {
+    if (!p.category) return;
     const key = p.category_id;
     if (!counts[key]) {
-      counts[key] = { ...p.categories, count: 0 };
+      counts[key] = { name: p.category.name, icon: p.category.icon, color: p.category.color, count: 0 };
     }
     counts[key].count++;
   });
@@ -151,87 +177,94 @@ export async function getProductsByCategory() {
 // ─── Categories ───────────────────────────────────────────────────────────────
 
 export async function getCategories(): Promise<Category[]> {
-  const { data: { user } } = await supabase.auth.getUser();
-
-  const { data, error } = await supabase
-    .from('categories')
-    .select('*')
-    .or(`is_default.eq.true,user_id.eq.${user?.id}`)
-    .order('name');
-
-  if (error) throw error;
-  return data as Category[];
+  const userId = await currentUserId();
+  const res = await databases.listDocuments(DATABASE_ID, COLLECTIONS.categories, [
+    Query.limit(200),
+  ]);
+  return res.documents
+    .map(doc => mapDoc<Category>(doc))
+    .filter(c => c.is_default || c.user_id === userId)
+    .sort((a, b) => a.name.localeCompare(b.name));
 }
 
 export async function addCategory(name: string, icon: string, color: string): Promise<Category> {
-  const { data: { user } } = await supabase.auth.getUser();
-  const { data, error } = await supabase
-    .from('categories')
-    .insert({ name, icon, color, user_id: user!.id, is_default: false })
-    .select()
-    .single();
-
-  if (error) throw error;
-  return data as Category;
+  const userId = await currentUserId();
+  const doc = await databases.createDocument(
+    DATABASE_ID,
+    COLLECTIONS.categories,
+    ID.unique(),
+    { name, icon, color, user_id: userId, is_default: false },
+    ownerPermissions(userId)
+  );
+  return mapDoc<Category>(doc);
 }
 
 // ─── Suppliers ────────────────────────────────────────────────────────────────
 
 export async function getSuppliers(): Promise<Supplier[]> {
-  const { data, error } = await supabase
-    .from('suppliers')
-    .select('*')
-    .order('name');
-
-  if (error) throw error;
-  return data as Supplier[];
+  const userId = await currentUserId();
+  const res = await databases.listDocuments(DATABASE_ID, COLLECTIONS.suppliers, [
+    Query.equal('user_id', userId),
+    Query.orderAsc('name'),
+    Query.limit(500),
+  ]);
+  return res.documents.map(doc => mapDoc<Supplier>(doc));
 }
 
 export async function addSupplier(supplier: Omit<Supplier, 'id' | 'user_id' | 'created_at'>): Promise<Supplier> {
-  const { data: { user } } = await supabase.auth.getUser();
-  const { data, error } = await supabase
-    .from('suppliers')
-    .insert({ ...supplier, user_id: user!.id })
-    .select()
-    .single();
-
-  if (error) throw error;
-  return data as Supplier;
+  const userId = await currentUserId();
+  const doc = await databases.createDocument(
+    DATABASE_ID,
+    COLLECTIONS.suppliers,
+    ID.unique(),
+    { ...supplier, user_id: userId },
+    ownerPermissions(userId)
+  );
+  return mapDoc<Supplier>(doc);
 }
 
 export async function deleteSupplier(id: string): Promise<void> {
-  const { error } = await supabase.from('suppliers').delete().eq('id', id);
-  if (error) throw error;
+  await databases.deleteDocument(DATABASE_ID, COLLECTIONS.suppliers, id);
 }
 
-// ─── Profile ──────────────────────────────────────────────────────────────────
+// ─── Notification Settings ────────────────────────────────────────────────────
 
-export async function getProfile(): Promise<UserProfile | null> {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return null;
-
-  const { data, error } = await supabase
-    .from('user_profiles')
-    .select('*')
-    .eq('id', user.id)
-    .single();
-
-  if (error) return null;
-  return { ...data, email: user.email } as UserProfile;
+export async function getNotificationSettings(): Promise<Record<number, boolean>> {
+  const userId = await currentUserId();
+  const res = await databases.listDocuments(DATABASE_ID, COLLECTIONS.notificationSettings, [
+    Query.equal('user_id', userId),
+    Query.limit(100),
+  ]);
+  const map: Record<number, boolean> = {};
+  res.documents.forEach((doc: any) => { map[doc.days_before] = doc.is_enabled; });
+  return map;
 }
 
-export async function updateProfile(updates: { full_name?: string; avatar_url?: string }): Promise<void> {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error('Not signed in');
+export async function setNotificationSetting(daysBefore: number, enabled: boolean): Promise<void> {
+  const userId = await currentUserId();
+  const existing = await databases.listDocuments(DATABASE_ID, COLLECTIONS.notificationSettings, [
+    Query.equal('user_id', userId),
+    Query.equal('days_before', daysBefore),
+    Query.equal('channel', 'push'),
+    Query.limit(1),
+  ]);
 
-  const { error: profileError } = await supabase
-    .from('user_profiles')
-    .update(updates)
-    .eq('id', user.id);
-  if (profileError) throw profileError;
-
-  const { error: authError } = await supabase.auth.updateUser({ data: updates });
-  if (authError) throw authError;
+  if (existing.documents.length > 0) {
+    await databases.updateDocument(
+      DATABASE_ID,
+      COLLECTIONS.notificationSettings,
+      existing.documents[0].$id,
+      { is_enabled: enabled }
+    );
+  } else {
+    await databases.createDocument(
+      DATABASE_ID,
+      COLLECTIONS.notificationSettings,
+      ID.unique(),
+      { user_id: userId, days_before: daysBefore, is_enabled: enabled, channel: 'push' },
+      ownerPermissions(userId)
+    );
+  }
 }
 
 // ─── Products for Calendar ────────────────────────────────────────────────────
@@ -241,4 +274,36 @@ export async function getProductsForMonth(year: number, month: number): Promise<
   const end = `${year}-${String(month).padStart(2, '0')}-31`;
 
   return getProducts({ date_from: start, date_to: end });
+}
+
+// ─── Profile ──────────────────────────────────────────────────────────────────
+
+export async function getProfile(): Promise<UserProfile | null> {
+  const user = await account.get();
+  try {
+    const doc = await databases.getDocument(DATABASE_ID, COLLECTIONS.userProfiles, user.$id);
+    return { ...mapDoc<UserProfile>(doc), email: user.email };
+  } catch {
+    return { id: user.$id, email: user.email, full_name: user.name, created_at: user.$createdAt };
+  }
+}
+
+export async function updateProfile(updates: { full_name?: string; avatar_url?: string }): Promise<void> {
+  const user = await account.get();
+
+  try {
+    await databases.updateDocument(DATABASE_ID, COLLECTIONS.userProfiles, user.$id, updates);
+  } catch {
+    await databases.createDocument(
+      DATABASE_ID,
+      COLLECTIONS.userProfiles,
+      user.$id,
+      updates,
+      ownerPermissions(user.$id)
+    );
+  }
+
+  if (updates.full_name) {
+    await account.updateName(updates.full_name);
+  }
 }

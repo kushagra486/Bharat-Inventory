@@ -10,8 +10,7 @@ import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import { useAuth } from '@/hooks/useAuth';
 import { COLORS, SPACING, RADIUS, FONT_SIZES, NOTIFICATION_DAYS } from '@/constants';
-import { supabase } from '@/lib/supabase';
-import { getProducts } from '@/lib/db';
+import { getProducts, getNotificationSettings, setNotificationSetting } from '@/lib/db';
 import { formatDate, getExpiryLabel } from '@/lib/utils';
 
 function SettingsSection({ title, children }: { title: string; children: React.ReactNode }) {
@@ -64,26 +63,13 @@ export default function SettingsScreen() {
   }, []);
 
   async function loadNotifSettings() {
-    const { data } = await supabase
-      .from('notification_settings')
-      .select('days_before, is_enabled')
-      .eq('user_id', user?.id);
-
-    if (data) {
-      const map: Record<number, boolean> = {};
-      data.forEach((s: any) => { map[s.days_before] = s.is_enabled; });
-      setNotifSettings(prev => ({ ...prev, ...map }));
-    }
+    const map = await getNotificationSettings();
+    setNotifSettings(prev => ({ ...prev, ...map }));
   }
 
   async function toggleNotif(days: number, value: boolean) {
     setNotifSettings(prev => ({ ...prev, [days]: value }));
-    await supabase.from('notification_settings').upsert({
-      user_id: user?.id,
-      days_before: days,
-      is_enabled: value,
-      channel: 'push',
-    }, { onConflict: 'user_id,days_before,channel' });
+    await setNotificationSetting(days, value);
   }
 
   async function generatePDFReport() {
@@ -211,7 +197,7 @@ export default function SettingsScreen() {
         <SettingsSection title="Account">
           <SettingsRow
             icon="person-circle-outline"
-            label={user?.user_metadata?.full_name ?? 'My Account'}
+            label={user?.name ?? 'My Account'}
             sublabel={user?.email}
             onPress={() => router.push('/settings/profile')}
           />

@@ -37,7 +37,7 @@ export default function SignupScreen() {
       await signUp(email.trim(), password, fullName.trim());
       Alert.alert(
         'Account Created! 🎉',
-        'Check your email to verify your account, then sign in.',
+        'You can now sign in with your new account.',
         [{ text: 'Sign In', onPress: () => router.replace('/auth/login') }]
       );
     } catch (err: any) {
