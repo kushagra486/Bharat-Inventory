@@ -35,15 +35,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const current = await account.get();
       setUser(current);
     } catch {
-      // No session yet -- skip the login wall by dropping visitors into an
-      // anonymous session instead. They still get a real, isolated user ID
-      // that the existing per-user document permissions work against.
-      try {
-        await account.createAnonymousSession();
-        setUser(await account.get());
-      } catch {
-        setUser(null);
-      }
+      setUser(null);
     } finally {
       setLoading(false);
     }
@@ -60,7 +52,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   async function signOut() {
     await account.deleteSession('current');
-    await refreshUser();
+    setUser(null);
   }
 
   async function resetPassword(email: string) {
