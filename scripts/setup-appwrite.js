@@ -15,7 +15,7 @@
  * Safe to re-run: already-existing resources are skipped.
  */
 
-const { Client, Databases, ID, Permission, Role, IndexType } = require('node-appwrite');
+const { Client, Databases, ID, Permission, Role, DatabasesIndexType: IndexType } = require('node-appwrite');
 
 const ENDPOINT = process.env.APPWRITE_ENDPOINT;
 const PROJECT_ID = process.env.APPWRITE_PROJECT_ID;
@@ -89,9 +89,9 @@ const COLLECTIONS = [
     attributes: [
       { key: 'user_id', type: 'string', size: 64 },
       { key: 'name', type: 'string', size: 128, required: true },
-      { key: 'icon', type: 'string', size: 16, required: true, default: '📦' },
-      { key: 'color', type: 'string', size: 16, required: true, default: '#94A3B8' },
-      { key: 'is_default', type: 'boolean', required: true, default: false },
+      { key: 'icon', type: 'string', size: 16, required: true },
+      { key: 'color', type: 'string', size: 16, required: true },
+      { key: 'is_default', type: 'boolean', required: true },
     ],
     indexes: [
       { key: 'idx_is_default', type: IndexType.Key, attributes: ['is_default'] },
@@ -124,14 +124,14 @@ const COLLECTIONS = [
       { key: 'batch_number', type: 'string', size: 64 },
       { key: 'manufacture_date', type: 'string', size: 32 },
       { key: 'expiry_date', type: 'string', size: 32, required: true },
-      { key: 'quantity', type: 'integer', required: true, min: 0, max: 1000000000, default: 1 },
-      { key: 'unit', type: 'string', size: 32, required: true, default: 'pcs' },
+      { key: 'quantity', type: 'integer', required: true, min: 0, max: 1000000000 },
+      { key: 'unit', type: 'string', size: 32, required: true },
       { key: 'supplier_id', type: 'string', size: 64 },
       { key: 'price', type: 'float', min: 0, max: 1000000000 },
       { key: 'location', type: 'string', size: 128 },
       { key: 'notes', type: 'string', size: 2000 },
       { key: 'image_url', type: 'string', size: 1024 },
-      { key: 'is_archived', type: 'boolean', required: true, default: false },
+      { key: 'is_archived', type: 'boolean', required: true },
     ],
     indexes: [
       { key: 'idx_user_id', type: IndexType.Key, attributes: ['user_id'] },
@@ -148,8 +148,8 @@ const COLLECTIONS = [
     attributes: [
       { key: 'user_id', type: 'string', size: 64, required: true },
       { key: 'days_before', type: 'integer', required: true, min: 0, max: 365 },
-      { key: 'is_enabled', type: 'boolean', required: true, default: true },
-      { key: 'channel', type: 'string', size: 16, required: true, default: 'push' },
+      { key: 'is_enabled', type: 'boolean', required: true },
+      { key: 'channel', type: 'string', size: 16, required: true },
     ],
     indexes: [
       { key: 'idx_user_id', type: IndexType.Key, attributes: ['user_id'] },
@@ -167,7 +167,7 @@ const COLLECTIONS = [
       { key: 'user_id', type: 'string', size: 64, required: true },
       { key: 'product_id', type: 'string', size: 64, required: true },
       { key: 'days_before', type: 'integer', required: true, min: 0, max: 365 },
-      { key: 'status', type: 'string', size: 16, required: true, default: 'pending' },
+      { key: 'status', type: 'string', size: 16, required: true },
       { key: 'sent_at', type: 'string', size: 32 },
     ],
     indexes: [
@@ -200,22 +200,33 @@ const DEFAULT_CATEGORIES = [
   { name: 'Others', icon: '📦', color: '#94A3B8' },
 ];
 
+async function exists(getPromise) {
+  try {
+    await getPromise;
+    return true;
+  } catch (err) {
+    if (err.code === 404) return false;
+    throw err;
+  }
+}
+
 async function ensureDatabase() {
   console.log(`→ Database "${DATABASE_ID}"`);
-  await ignoreConflict(databases.create(DATABASE_ID, 'Expiry Dashboard'));
+  if (await exists(databases.get(DATABASE_ID))) return;
+  await databases.create(DATABASE_ID, 'Expiry Dashboard');
 }
 
 async function ensureCollection(collection) {
   console.log(`→ Collection "${collection.id}"`);
-  await ignoreConflict(
-    databases.createCollection(
+  if (!(await exists(databases.getCollection(DATABASE_ID, collection.id)))) {
+    await databases.createCollection(
       DATABASE_ID,
       collection.id,
       collection.name,
       [Permission.create(Role.users())],
       true // documentSecurity: per-document permissions control read/update/delete
-    )
-  );
+    );
+  }
 
   for (const attr of collection.attributes) {
     await createAttribute(collection.id, attr);
