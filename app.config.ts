@@ -58,8 +58,9 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   },
   scheme: 'expiry-dashboard',
   extra: {
-    supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL,
-    supabaseAnonKey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
+    appwriteEndpoint: process.env.EXPO_PUBLIC_APPWRITE_ENDPOINT,
+    appwriteProjectId: process.env.EXPO_PUBLIC_APPWRITE_PROJECT_ID,
+    appwriteDatabaseId: process.env.EXPO_PUBLIC_APPWRITE_DATABASE_ID,
     eas: {
       projectId: 'your-eas-project-id',
     },

@@ -15,7 +15,7 @@ Track products, get alerts before they expire, view analytics, and reduce waste 
 - 📷 **Barcode Scanner** — Scan product barcodes with your phone camera
 - 📄 **PDF & CSV Reports** — Export full inventory reports
 - 🌐 **Web + Android** — Same app runs in browser and as APK
-- 🔐 **Secure Auth** — Supabase authentication with RLS
+- 🔐 **Secure Auth** — Appwrite authentication with document-level permissions
 - 💯 **Free Forever** — No paid APIs, no subscriptions
 
 ---
@@ -25,8 +25,8 @@ Track products, get alerts before they expire, view analytics, and reduce waste 
 | Layer | Tool | Cost |
 |---|---|---|
 | Frontend (Web + Android) | React Native + Expo | Free |
-| Database | Supabase PostgreSQL | Free |
-| Auth | Supabase Auth | Free |
+| Database | Appwrite Databases | Free |
+| Auth | Appwrite Auth | Free |
 | Charts | react-native-chart-kit | Free |
 | Barcode | Expo Camera | Free |
 | PDF Reports | Expo Print | Free |
@@ -45,11 +45,24 @@ cd expiry-dashboard
 npm install
 ```
 
-### Step 2 — Set up Supabase
+### Step 2 — Set up Appwrite
 
-1. Go to [supabase.com](https://supabase.com) → Create a new project (free)
-2. Go to **SQL Editor** → Run the file `supabase/schema.sql`
-3. Go to **Settings → API** → Copy your Project URL and Anon Key
+1. Go to [cloud.appwrite.io](https://cloud.appwrite.io) → Create a new project (free)
+2. Go to **Overview → Integrations → API keys** → create a key with the `databases.write` scope
+3. Run the provisioning script to create the database, collections, and default categories:
+
+```bash
+APPWRITE_ENDPOINT=https://cloud.appwrite.io/v1 \
+APPWRITE_PROJECT_ID=your-project-id \
+APPWRITE_API_KEY=your-api-key \
+APPWRITE_DATABASE_ID=expiry_dashboard \
+npm run setup:appwrite
+```
+
+This is the Appwrite equivalent of running `supabase/schema.sql` — safe to re-run, it skips anything that already exists.
+
+4. Go to **Auth → Settings** and confirm the Email/Password method is enabled (on by default)
+5. Go to **Overview** → copy your **Project ID** and API **Endpoint**
 
 ### Step 3 — Configure environment
 
@@ -59,8 +72,9 @@ cp .env.example .env
 
 Edit `.env`:
 ```
-EXPO_PUBLIC_SUPABASE_URL=https://yourproject.supabase.co
-EXPO_PUBLIC_SUPABASE_ANON_KEY=your-anon-key-here
+EXPO_PUBLIC_APPWRITE_ENDPOINT=https://cloud.appwrite.io/v1
+EXPO_PUBLIC_APPWRITE_PROJECT_ID=your-project-id
+EXPO_PUBLIC_APPWRITE_DATABASE_ID=expiry_dashboard
 ```
 
 ### Step 4 — Run the app
@@ -134,23 +148,23 @@ expiry-dashboard/
 │   ├── useAuth.tsx          # Authentication context
 │   └── useProducts.ts       # Products data hook
 ├── lib/
-│   ├── supabase.ts          # Supabase client
-│   ├── db.ts                # All database queries
-│   └── utils.ts             # Helper functions
-├── types/index.ts           # TypeScript types
-├── constants/index.ts       # Colors, fonts, config
-├── supabase/schema.sql      # Database schema (run this first!)
-├── app.config.ts            # Expo config
-└── eas.json                 # Android APK build config
+│   ├── appwrite.ts           # Appwrite client
+│   ├── db.ts                 # All database queries
+│   └── utils.ts              # Helper functions
+├── types/index.ts            # TypeScript types
+├── constants/index.ts        # Colors, fonts, config
+├── scripts/setup-appwrite.js # Database schema (run this first!)
+├── app.config.ts             # Expo config
+└── eas.json                  # Android APK build config
 ```
 
 ---
 
 ## 🔒 Security
 
-- All data is protected by Supabase Row Level Security (RLS)
-- Each user can only see their own products
-- Authentication via Supabase Auth (email/password)
+- All data is protected by Appwrite document-level permissions
+- Each user can only read/update/delete their own documents
+- Authentication via Appwrite Auth (email/password)
 - No data shared between users
 
 ---

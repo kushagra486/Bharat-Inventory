@@ -10,7 +10,7 @@ import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import { useAuth } from '@/hooks/useAuth';
 import { COLORS, SPACING, RADIUS, FONT_SIZES, NOTIFICATION_DAYS } from '@/constants';
-import { supabase } from '@/lib/supabase';
+import { databases, APPWRITE_DATABASE_ID, COLLECTIONS, ID, Query, Permission, Role } from '@/lib/appwrite';
 import { getProducts } from '@/lib/db';
 import { formatDate, getExpiryLabel } from '@/lib/utils';
 
@@ -64,26 +64,44 @@ export default function SettingsScreen() {
   }, []);
 
   async function loadNotifSettings() {
-    const { data } = await supabase
-      .from('notification_settings')
-      .select('days_before, is_enabled')
-      .eq('user_id', user?.id);
+    if (!user) return;
+    const { documents } = await databases.listDocuments(
+      APPWRITE_DATABASE_ID,
+      COLLECTIONS.notificationSettings,
+      [Query.equal('user_id', user.id)]
+    );
 
-    if (data) {
-      const map: Record<number, boolean> = {};
-      data.forEach((s: any) => { map[s.days_before] = s.is_enabled; });
-      setNotifSettings(prev => ({ ...prev, ...map }));
-    }
+    const map: Record<number, boolean> = {};
+    documents.forEach((s: any) => { map[s.days_before] = s.is_enabled; });
+    setNotifSettings(prev => ({ ...prev, ...map }));
   }
 
   async function toggleNotif(days: number, value: boolean) {
     setNotifSettings(prev => ({ ...prev, [days]: value }));
-    await supabase.from('notification_settings').upsert({
-      user_id: user?.id,
-      days_before: days,
-      is_enabled: value,
-      channel: 'push',
-    }, { onConflict: 'user_id,days_before,channel' });
+    if (!user) return;
+
+    const { documents } = await databases.listDocuments(
+      APPWRITE_DATABASE_ID,
+      COLLECTIONS.notificationSettings,
+      [Query.equal('user_id', user.id), Query.equal('days_before', days), Query.equal('channel', 'push')]
+    );
+
+    if (documents.length > 0) {
+      await databases.updateDocument(
+        APPWRITE_DATABASE_ID,
+        COLLECTIONS.notificationSettings,
+        documents[0].$id,
+        { is_enabled: value }
+      );
+    } else {
+      await databases.createDocument(
+        APPWRITE_DATABASE_ID,
+        COLLECTIONS.notificationSettings,
+        ID.unique(),
+        { user_id: user.id, days_before: days, is_enabled: value, channel: 'push' },
+        [Permission.read(Role.user(user.id)), Permission.update(Role.user(user.id)), Permission.delete(Role.user(user.id))]
+      );
+    }
   }
 
   async function generatePDFReport() {
@@ -211,7 +229,7 @@ export default function SettingsScreen() {
         <SettingsSection title="Account">
           <SettingsRow
             icon="person-circle-outline"
-            label={user?.user_metadata?.full_name ?? 'My Account'}
+            label={user?.full_name ?? 'My Account'}
             sublabel={user?.email}
             onPress={() => router.push('/settings/profile')}
           />

@@ -89,7 +89,7 @@ export default function DashboardScreen() {
 
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
-  const firstName = user?.user_metadata?.full_name?.split(' ')[0] ?? 'there';
+  const firstName = user?.full_name?.split(' ')[0] ?? 'there';
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>

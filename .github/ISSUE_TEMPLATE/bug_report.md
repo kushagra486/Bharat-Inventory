@@ -34,4 +34,4 @@ If applicable, add screenshots to help explain the problem.
 Paste any errors from the browser DevTools console (F12 → Console tab).
 
 **Additional context**
-Anything else that might help — e.g. did this start after a Supabase schema change?
+Anything else that might help — e.g. did this start after an Appwrite schema change?
